@@ -5,16 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mosaic Move — B2B Logistics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async></script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SheetJS for Excel/CSV parsing -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   /* ── AUTH SCREEN ── */
   #auth-screen {
     position:fixed; inset:0; z-index:9999;
     background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 60%, #f4f6f9 100%);
     display:flex; align-items:center; justify-content:center;
-    font-family:'Plus Jakarta Sans',sans-serif;
+    font-family:var(--font-body);
   }
   #auth-screen.hidden { display:none; }
 
@@ -26,7 +32,7 @@
   }
   .auth-logo-tag {
     font-size:10px; letter-spacing:3px; text-transform:uppercase;
-    color:#0f7aff; font-family:'JetBrains Mono',monospace; margin-bottom:6px;
+    color:#0f7aff; font-family:var(--font-mono); margin-bottom:6px;
   }
   .auth-title {
     font-size:22px; font-weight:800; color:#0f1724;
@@ -34,21 +40,21 @@
   }
   .auth-sub {
     font-size:12px; color:#9aa3b2;
-    font-family:'JetBrains Mono',monospace; margin-bottom:32px;
+    font-family:var(--font-mono); margin-bottom:32px;
   }
   .auth-divider {
     display:flex; align-items:center; gap:12px;
     margin-bottom:24px;
   }
   .auth-divider-line { flex:1; height:1px; background:#e2e6ed; }
-  .auth-divider-text { font-size:10px; color:#9aa3b2; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+  .auth-divider-text { font-size:10px; color:#9aa3b2; font-family:var(--font-mono); white-space:nowrap; }
 
   .auth-google-btn {
     width:100%; padding:12px 20px;
     background:#fff; border:1.5px solid #e2e6ed;
     border-radius:10px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:12px;
-    font-family:'Plus Jakarta Sans',sans-serif; font-size:14px;
+    font-family:var(--font-body); font-size:14px;
     font-weight:600; color:#0f1724;
     transition:all .2s; box-shadow:0 1px 4px rgba(0,0,0,0.06);
   }
@@ -62,7 +68,7 @@
     margin-top:20px; padding:10px 14px;
     background:rgba(15,122,255,0.04); border:1px solid rgba(15,122,255,0.12);
     border-radius:8px;
-    font-size:11px; font-family:'JetBrains Mono',monospace;
+    font-size:11px; font-family:var(--font-mono);
     color:#4a5568; line-height:1.6;
   }
   .auth-domain-note strong { color:#0f7aff; }
@@ -71,14 +77,14 @@
     margin-top:16px; padding:10px 14px;
     background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2);
     border-radius:8px; font-size:11px;
-    font-family:'JetBrains Mono',monospace; color:#ef4444;
+    font-family:var(--font-mono); color:#ef4444;
     display:none;
   }
   .auth-error.show { display:block; }
 
   .auth-loading {
     margin-top:16px; font-size:11px;
-    font-family:'JetBrains Mono',monospace; color:#9aa3b2;
+    font-family:var(--font-mono); color:#9aa3b2;
     display:none;
   }
   .auth-loading.show { display:block; }
@@ -127,9 +133,9 @@
     --delayed: #ff6b35;
     --failed: #ef4444;
     --attempted: #8b5cf6;
-    --font-head: 'Plus Jakarta Sans', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-    --font-body: 'Plus Jakarta Sans', sans-serif;
+    --font-head: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', ui-monospace, monospace;
+    --font-body: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:var(--bg); color:var(--text); font-family:var(--font-body); font-size:13px; min-height:100vh; overflow-x:hidden; }
@@ -427,10 +433,10 @@
   </div>
 
   <div class="nav-section">Views</div>
-  <div class="nav-item active" onclick="setNav(this,'dashboard')"><span style="font-size:15px">⬡</span> Dashboard</div>
-  <div class="nav-item" onclick="setNav(this,'lrboard')"><span style="font-size:15px">◎</span> LR Tracking <span class="nav-badge">3</span></div>
-  <div class="nav-item" onclick="setNav(this,'mis')"><span style="font-size:15px">▤</span> MIS Manager</div>
-  <div class="nav-item" onclick="setNav(this,'timeline')"><span style="font-size:15px">⟳</span> Shipment Timeline</div>
+  <div class="nav-item active" onclick="setNav(this,'dashboard')" data-view="dashboard"><span style="font-size:15px">⬡</span> Dashboard</div>
+  <div class="nav-item" onclick="setNav(this,'lrboard')" data-view="lrboard"><span style="font-size:15px">◎</span> LR Tracking <span class="nav-badge">3</span></div>
+  <div class="nav-item" onclick="setNav(this,'mis')" data-view="mis"><span style="font-size:15px">▤</span> MIS Manager</div>
+  <div class="nav-item" onclick="setNav(this,'timeline')" data-view="timeline"><span style="font-size:15px">⟳</span> Shipment Timeline</div>
 
   <div class="nav-section">Partners</div>
   <div id="pill-all" style="display:flex;align-items:center;gap:9px;padding:9px 14px;margin:1px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;background:rgba(15,122,255,0.08);color:var(--accent)" onclick="setPartner('all',this)">
@@ -671,12 +677,8 @@
           <th>WAREHOUSE</th><th>DISPATCH</th><th>APPT DATE</th><th>DELIVERY</th><th>STATUS</th><th></th>
         </tr></thead><tbody id="lr-tbody"></tbody></table>
         <div class="table-footer">
-          <span class="page-info" id="page-info">Showing 1–15 of 843 shipments</span>
-          <div class="page-btns">
-            <button class="page-btn">‹</button>
-            <button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button>
-            <button class="page-btn">›</button>
-          </div>
+          <span class="page-info" id="page-info">Showing 1–15 of 15 shipments</span>
+          <div class="page-btns" id="page-btns"></div>
         </div>
       </div>
     </div>
@@ -740,12 +742,25 @@
         <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div>
             <div style="font-family:var(--font-head);font-weight:700;font-size:15px">Partner MIS Upload — MDM</div>
-            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Select carrier → Choose file → Upload · XLSX and CSV supported</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Select upload type → Select carrier → Choose file → Upload</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3)">LAST GLOBAL SYNC</div>
-            <div style="font-size:11px;font-family:var(--font-mono);color:var(--text);font-weight:600">19 Mar 2026 · 18:27</div>
+            <!-- Upload type toggle -->
+            <div style="display:flex;gap:6px">
+              <button class="upload-type-btn" onclick="setUploadType('warehouse_base',this)"
+                style="padding:7px 14px;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:7px;font-family:var(--font-mono);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">
+                📦 Warehouse Base File
+              </button>
+              <button class="upload-type-btn" onclick="setUploadType('partner_mis',this)"
+                style="padding:7px 14px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;transition:all .2s">
+                📋 Partner MIS
+              </button>
+            </div>
           </div>
+        </div>
+        <!-- Upload type helper -->
+        <div id="upload-type-helper" style="padding:8px 22px;background:rgba(15,122,255,0.04);border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--intransit)">
+          Creates new shipment records. LR numbers become the primary key.
         </div>
 
         <!-- Upload Form -->
@@ -879,11 +894,11 @@
           <thead>
             <tr>
               <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">PARTNER</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">TYPE</th>
               <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">FILE NAME</th>
-              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">PERIOD</th>
               <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">ROWS</th>
               <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">UPLOADED BY</th>
-              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">TIMESTAMP</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">DATE</th>
               <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">STATUS</th>
             </tr>
           </thead>
@@ -1102,25 +1117,860 @@
 </div>
 
 <script>
-const shipments = [
-  { lr:'EVR-2026-0841', partner:'Everest', pClass:'p-everest', channel:'Ecom/Qcom',  consignee:'Big Basket WH',      wh:'HYD',      dispatch:'12 Mar', appt:'14 Mar', delivery:'15 Mar', status:'Delivered',    sClass:'s-delivered' },
-  { lr:'BRQ-2026-0291', partner:'Buraq',   pClass:'p-buraq',   channel:'Offline',    consignee:'Reliance Retail',     wh:'BHIWANDI', dispatch:'14 Mar', appt:'17 Mar', delivery:'—',      status:'In Transit',   sClass:'s-transit'   },
-  { lr:'RVG-2026-1104', partner:'Rivigo',  pClass:'p-rivigo',  channel:'Offline',    consignee:'DMart Pune',          wh:'BADDI',    dispatch:'13 Mar', appt:'16 Mar', delivery:'—',      status:'Delayed',      sClass:'s-delayed'   },
-  { lr:'STC-2026-0048', partner:'Sitics',  pClass:'p-sitics',  channel:'Ecom/Qcom',  consignee:'Blinkit DC',          wh:'BHIWANDI', dispatch:'15 Mar', appt:'18 Mar', delivery:'19 Mar', status:'Delivered',    sClass:'s-delivered' },
-  { lr:'BRQ-2026-0302', partner:'Buraq',   pClass:'p-buraq',   channel:'Ecom/Qcom',  consignee:'Zepto Hub',           wh:'BHIWANDI', dispatch:'16 Mar', appt:'18 Mar', delivery:'18 Mar', status:'Delivered',    sClass:'s-delivered' },
-  { lr:'EVR-2026-0862', partner:'Everest', pClass:'p-everest', channel:'Offline',    consignee:"Spencer's Kolkata",   wh:'HYD',      dispatch:'13 Mar', appt:'—',      delivery:'—',      status:'In Transit',   sClass:'s-transit'   },
-  { lr:'RVG-2026-1118', partner:'Rivigo',  pClass:'p-rivigo',  channel:'Offline',    consignee:'Star Bazaar',         wh:'BADDI',    dispatch:'14 Mar', appt:'17 Mar', delivery:'—',      status:'In Transit',   sClass:'s-transit'   },
-  { lr:'STC-2026-0051', partner:'Sitics',  pClass:'p-sitics',  channel:'Ecom/Qcom',  consignee:'Amazon FC BOM',       wh:'BHIWANDI', dispatch:'17 Mar', appt:'19 Mar', delivery:'19 Mar', status:'Delivered',    sClass:'s-delivered' },
-  { lr:'BRQ-2026-0318', partner:'Buraq',   pClass:'p-buraq',   channel:'Offline',    consignee:'Metro Cash & Carry',  wh:'BADDI',    dispatch:'15 Mar', appt:'—',      delivery:'—',      status:'In Transit',   sClass:'s-transit'   },
-  { lr:'EVR-2026-0875', partner:'Everest', pClass:'p-everest', channel:'Ecom/Qcom',  consignee:'Flipkart WH',         wh:'HYD',      dispatch:'16 Mar', appt:'18 Mar', delivery:'—',      status:'Delayed',      sClass:'s-delayed'   },
-  { lr:'RVG-2026-1129', partner:'Rivigo',  pClass:'p-rivigo',  channel:'Offline',    consignee:"Nature's Basket",     wh:'BHIWANDI', dispatch:'15 Mar', appt:'18 Mar', delivery:'—',      status:'Attempted/UD', sClass:'s-attempted' },
-  { lr:'BRQ-2026-0325', partner:'Buraq',   pClass:'p-buraq',   channel:'Ecom/Qcom',  consignee:'Swiggy Instamart',    wh:'BHIWANDI', dispatch:'18 Mar', appt:'20 Mar', delivery:'—',      status:'In Transit',   sClass:'s-transit'   },
-  { lr:'STC-2026-0059', partner:'Sitics',  pClass:'p-sitics',  channel:'Offline',    consignee:'HyperCity BLR',       wh:'HYD',      dispatch:'17 Mar', appt:'19 Mar', delivery:'19 Mar', status:'Delivered',    sClass:'s-delivered' },
-  { lr:'EVR-2026-0881', partner:'Everest', pClass:'p-everest', channel:'Ecom/Qcom',  consignee:'Udaan DC',            wh:'HYD',      dispatch:'18 Mar', appt:'20 Mar', delivery:'—',      status:'In Transit',   sClass:'s-transit'   },
-  { lr:'BRQ-2026-0331', partner:'Buraq',   pClass:'p-buraq',   channel:'Offline',    consignee:'Vishal Mega Mart',    wh:'BADDI',    dispatch:'17 Mar', appt:'—',      delivery:'—',      status:'Attempted/UD', sClass:'s-attempted' },
-];
+// ══════════════════════════════════════════════════════
+// SUPABASE — Live Data Layer
+// ══════════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://tomqqnslqgokhdxqvzfs.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvbXFxbnNscWdva2hkeHF2emZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MTc3NTUsImV4cCI6MjA5MDA5Mzc1NX0.dWBoRn-6P_RITicnXaE4Mc6KICKRQSPvYg1y0ErokBI';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-let activePartner = 'all', activeChannel = 'all', searchQ = '', statusQ = '', partnerDropQ = '';
+// ── In-memory state (loaded from DB) ──
+let shipments    = [];
+let partners     = [];
+let uploadHistory = [];
+let dbStats      = { total:0, delivered:0, in_transit:0, delayed:0, attempted:0, failed:0, pending:0 };
+
+// ── Pagination & filter state ──
+const PAGE_SIZE = 10;
+let currentPage  = 1;
+let activePartner = 'all';
+let activeChannel = 'all';
+let searchQ = '';
+let statusQ = '';
+let partnerDropQ = '';
+
+// ── LOAD ALL DATA ON INIT ──────────────────────────────
+async function loadAllData() {
+  showDbStatus('loading');
+  try {
+    await Promise.all([loadPartners(), loadShipments(), loadUploadHistory(), loadStats()]);
+    showDbStatus('live');
+  } catch(e) {
+    console.error('DB load error:', e);
+    showDbStatus('error');
+  }
+}
+
+async function loadPartners() {
+  const { data, error } = await db.from('partners').select('*').eq('status','active').order('name');
+  if (error) throw error;
+  partners = data || [];
+  rebuildPartnerSidebar();
+  rebuildPartnerDropdowns();
+}
+
+async function loadShipments() {
+  const { data, error } = await db
+    .from('shipment_status_view')
+    .select('*')
+    .order('dispatch_date', { ascending: false });
+  if (error) throw error;
+  // Normalise to match existing UI shape
+  shipments = (data || []).map(r => ({
+    lr:        r.lr_number,
+    partner:   r.partner_name,
+    pClass:    'p-' + (r.partner_name||'').toLowerCase(),
+    channel:   r.channel,
+    consignee: r.consignee,
+    wh:        r.warehouse,
+    dispatch:  r.dispatch_date   ? fmtDate(r.dispatch_date)   : '—',
+    appt:      r.appt_date       ? fmtDate(r.appt_date)       : '—',
+    delivery:  r.actual_delivery ? fmtDate(r.actual_delivery) : '—',
+    status:    r.delivery_status || 'Pending',
+    sClass:    statusClass(r.delivery_status),
+    color:     r.partner_color
+  }));
+  renderTable();
+}
+
+async function loadStats() {
+  const { data, error } = await db.rpc('get_dashboard_stats');
+  if (error) { console.warn('Stats error:', error); return; }
+  if (data) {
+    dbStats = data;
+    updateKpiCards();
+    updateTrioCards();
+  }
+}
+
+async function loadUploadHistory() {
+  const { data, error } = await db
+    .from('uploads')
+    .select('*, partners(name)')
+    .order('uploaded_at', { ascending: false })
+    .limit(10);
+  if (error) { console.warn('Upload history error:', error); return; }
+  uploadHistory = data || [];
+  renderUploadHistory();
+}
+
+// ── REALTIME subscription on shipments ────────────────
+function subscribeRealtime() {
+  db.channel('shipments-changes')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'shipments' },
+      () => { loadShipments(); loadStats(); }
+    )
+    .subscribe();
+}
+
+// ── HELPER FUNCTIONS ──────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function statusClass(s) {
+  const map = {
+    'Delivered':'s-delivered', 'In Transit':'s-transit',
+    'Delayed':'s-delayed', 'Failed/RTO':'s-failed',
+    'Attempted/UD':'s-attempted', 'Pending':'s-pending'
+  };
+  return map[s] || 's-pending';
+}
+
+function showDbStatus(state) {
+  const dot = document.querySelector('.sync-dot');
+  const btn = document.querySelector('.sync-btn');
+  if (!dot || !btn) return;
+  if (state === 'loading') {
+    dot.style.background = 'var(--pending)';
+    btn.title = 'Loading data…';
+  } else if (state === 'live') {
+    dot.style.background = 'var(--delivered)';
+    btn.title = 'Live — connected to Supabase';
+  } else {
+    dot.style.background = 'var(--failed)';
+    btn.title = 'Database connection error';
+  }
+}
+
+function updateKpiCards() {
+  const map = {
+    'k1': dbStats.total,
+    'k2': dbStats.delivered,
+    'k3': dbStats.in_transit,
+    'k4': dbStats.attempted,
+    'k5': dbStats.delayed,
+    'k6': dbStats.failed
+  };
+  document.querySelectorAll('.kpi-card').forEach((card, i) => {
+    const key = ['k1','k2','k3','k4','k5','k6'][i];
+    const valEl = card.querySelector('.kpi-value');
+    if (valEl && map[key] !== undefined) valEl.textContent = map[key];
+  });
+}
+
+function updateTrioCards() {
+  const t = dbStats.total || 1;
+  const setTrio = (sel, val) => {
+    const el = document.querySelector(sel);
+    if (el) el.textContent = val;
+  };
+  setTrio('.tc-delivered .trio-num', dbStats.delivered || 0);
+  setTrio('.tc-transit .trio-num',   dbStats.in_transit || 0);
+  setTrio('.tc-attempted .trio-num', (dbStats.attempted || 0));
+
+  // Update progress bars
+  const setBar = (sel, pct) => {
+    const el = document.querySelector(sel);
+    if (el) el.style.width = pct + '%';
+  };
+  setBar('.tc-delivered .trio-bar-fill', ((dbStats.delivered||0)/t*100).toFixed(1));
+  setBar('.tc-transit .trio-bar-fill',   ((dbStats.in_transit||0)/t*100).toFixed(1));
+  setBar('.tc-attempted .trio-bar-fill', ((dbStats.attempted||0)/t*100).toFixed(1));
+}
+
+function rebuildPartnerSidebar() {
+  const section = document.querySelector('.partner-section');
+  if (!section) return;
+  // Keep label, remove old pills
+  const label = section.querySelector('.partner-label');
+  section.innerHTML = '';
+  if (label) section.appendChild(label);
+
+  partners.forEach(p => {
+    const pill = document.createElement('div');
+    pill.className = 'partner-pill';
+    pill.id = 'pill-' + p.name.toLowerCase();
+    pill.onclick = function() { setPartner(p.name, this); };
+    pill.innerHTML = `
+      <div class="partner-dot" style="background:${p.color}"></div>
+      <span class="partner-pname">${p.name}</span>
+      <span class="partner-count">${
+        shipments.filter(s => s.partner === p.name).length
+      }</span>`;
+    section.appendChild(pill);
+  });
+}
+
+function rebuildPartnerDropdowns() {
+  // MIS upload dropdown
+  const sel = document.getElementById('mdm-partner-select');
+  if (sel) {
+    const current = sel.value;
+    // Keep first placeholder option
+    while (sel.options.length > 1) sel.remove(1);
+    partners.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name; opt.textContent = p.name;
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  }
+  // LR board filter
+  const pDrop = document.querySelectorAll('.filter-select')[1];
+  if (pDrop) {
+    while (pDrop.options.length > 1) pDrop.remove(1);
+    partners.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name; opt.textContent = p.name;
+      pDrop.appendChild(opt);
+    });
+  }
+}
+
+// ── TABLE RENDERING ────────────────────────────────────
+function getFiltered() {
+  return shipments.filter(r => {
+    const mp  = activePartner === 'all' || r.partner === activePartner;
+    const mc  = activeChannel === 'all'
+      || (activeChannel === 'ecom'    && r.channel.toLowerCase().includes('ecom'))
+      || (activeChannel === 'offline' && r.channel.toLowerCase() === 'offline');
+    const ms  = !searchQ
+      || r.lr.toLowerCase().includes(searchQ)
+      || r.consignee.toLowerCase().includes(searchQ)
+      || r.partner.toLowerCase().includes(searchQ);
+    const mst = !statusQ || r.status.toLowerCase().includes(statusQ.toLowerCase());
+    const mpd = !partnerDropQ || r.partner === partnerDropQ;
+    return mp && mc && ms && mst && mpd;
+  });
+}
+
+function renderTable() {
+  const data = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = 1;
+  const start    = (currentPage - 1) * PAGE_SIZE;
+  const end      = Math.min(start + PAGE_SIZE, data.length);
+  const pageData = data.slice(start, end);
+
+  const tbody = document.getElementById('lr-tbody');
+  if (!tbody) return;
+
+  if (pageData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${shipments.length === 0
+        ? '⬆ No shipments yet — upload a Warehouse Base File to get started'
+        : '🔍 No shipments match the current filters'}
+    </td></tr>`;
+    document.getElementById('page-info').textContent = 'No results';
+    const pb = document.getElementById('page-btns');
+    if (pb) pb.style.display = 'none';
+    return;
+  }
+
+  tbody.innerHTML = pageData.map(r => `
+    <tr>
+      <td><span class="lr-code">${r.lr}</span></td>
+      <td><span class="partner-badge p-${(r.partner||'').toLowerCase()}">${r.partner}</span></td>
+      <td><span class="channel-tag">${r.channel}</span></td>
+      <td style="color:var(--text);font-weight:500">${r.consignee}</td>
+      <td><span class="channel-tag">${r.wh}</span></td>
+      <td><span class="date-cell">${r.dispatch}</span></td>
+      <td><span class="date-cell">${r.appt}</span></td>
+      <td><span class="date-cell ${r.status==='Delayed'?'overdue':''}">${r.delivery}</span></td>
+      <td><span class="status-pill ${r.sClass}">${r.status}</span></td>
+      <td><button class="action-btn" onclick="showToast('${r.lr} opened')">View</button></td>
+    </tr>`).join('');
+
+  document.getElementById('page-info').textContent =
+    `Showing ${start+1}–${end} of ${data.length} shipments`;
+
+  const paginationEl = document.getElementById('page-btns');
+  if (!paginationEl) return;
+  if (totalPages <= 1) { paginationEl.style.display = 'none'; return; }
+  paginationEl.style.display = 'flex';
+
+  let btns = `<button class="page-btn" onclick="goToPage(${currentPage-1})"
+    ${currentPage===1?'disabled style="opacity:.4;cursor:not-allowed"':''}>‹ Prev</button>`;
+  let pages = [];
+  if (totalPages <= 5) pages = Array.from({length:totalPages},(_,i)=>i+1);
+  else if (currentPage <= 3) pages = [1,2,3,4,'...',totalPages];
+  else if (currentPage >= totalPages-2) pages = [1,'...',totalPages-3,totalPages-2,totalPages-1,totalPages];
+  else pages = [1,'...',currentPage-1,currentPage,currentPage+1,'...',totalPages];
+  pages.forEach(p => {
+    if (p==='...') btns += `<span style="padding:4px 6px;font-family:var(--font-mono);font-size:11px;color:var(--text3)">…</span>`;
+    else btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goToPage(${p})">${p}</button>`;
+  });
+  btns += `<button class="page-btn" onclick="goToPage(${currentPage+1})"
+    ${currentPage===totalPages?'disabled style="opacity:.4;cursor:not-allowed"':''}>Next ›</button>`;
+  paginationEl.innerHTML = btns;
+}
+
+function goToPage(page) {
+  const data = getFiltered();
+  const totalPages = Math.ceil(data.length / PAGE_SIZE);
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  renderTable();
+  document.querySelector('.table-section')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function resetPage() { currentPage = 1; }
+
+function filterTable(q)         { searchQ = q.toLowerCase(); resetPage(); renderTable(); }
+function filterByStatus(s)      { statusQ = s; resetPage(); renderTable(); }
+function filterByPartnerDrop(p) { partnerDropQ = p; resetPage(); renderTable(); }
+
+function setPartner(p, el) {
+  activePartner = p;
+  document.querySelectorAll('.partner-pill').forEach(x => x.classList.remove('active'));
+  const allEl = document.getElementById('pill-all');
+  if (allEl) {
+    allEl.style.background = ''; allEl.style.color = 'var(--text2)'; allEl.style.fontWeight = '500';
+  }
+  if (p === 'all') {
+    if (allEl) { allEl.style.background='rgba(15,122,255,0.08)'; allEl.style.color='var(--accent)'; allEl.style.fontWeight='600'; }
+  } else if (el) {
+    el.classList.add('active');
+  }
+  resetPage(); renderTable();
+}
+
+function setChannel(btn, ch) {
+  document.querySelectorAll('.ch-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeChannel = ch;
+  resetPage(); renderTable();
+}
+
+// ── TAB + NAV ──────────────────────────────────────────
+function switchView(id, tabEl) {
+  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  tabEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navEl = document.querySelector(`.nav-item[data-view="${id}"]`);
+  if (navEl) navEl.classList.add('active');
+  if (navTitles[id]) document.getElementById('page-title').textContent = navTitles[id];
+}
+
+const navMap    = { dashboard:0, lrboard:1, mis:2, timeline:3 };
+const navTitles = { dashboard:'Mosaic Move', lrboard:'LR Tracking', mis:'MIS Manager', timeline:'Shipment Timeline' };
+
+function setNav(el, id) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = navTitles[id];
+  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  const tabs = document.querySelectorAll('.view-tab');
+  if (tabs[navMap[id]]) tabs[navMap[id]].classList.add('active');
+}
+
+// ── MODAL ──────────────────────────────────────────────
+function openModal()  { document.getElementById('lr-modal').classList.add('open'); }
+function closeModal() { document.getElementById('lr-modal').classList.remove('open'); }
+
+async function submitLR() {
+  // Collect form values
+  const lr        = document.querySelector('#lr-modal input[type=text]')?.value?.trim();
+  const partnerEl = document.querySelector('#lr-modal select');
+  const partnerName = partnerEl?.value;
+  if (!lr || !partnerName) { showToast('⚠ LR Number and Partner are required'); return; }
+  const partner = partners.find(p => p.name === partnerName);
+  if (!partner) { showToast('⚠ Partner not found'); return; }
+
+  const { error } = await db.from('shipments').insert({
+    lr_number:       lr,
+    partner_id:      partner.id,
+    warehouse:       'Bhiwandi',
+    channel:         'Offline',
+    consignee:       'Manual Entry',
+    delivery_status: 'Pending',
+    created_by:      currentUserEmail || 'unknown'
+  });
+  if (error) { showToast('✗ Error saving LR: ' + error.message); return; }
+  closeModal();
+  showToast('LR entry saved ✓');
+  await loadShipments();
+  await loadStats();
+}
+
+// ── CSV EXPORT ─────────────────────────────────────────
+function exportCSV() {
+  const data = getFiltered();
+  const h = ['LR Number','Partner','Channel','Consignee','Warehouse','Dispatch','Appointment','Delivery','Status'];
+  const csv = [h, ...data.map(r=>[r.lr,r.partner,r.channel,r.consignee,r.wh,r.dispatch,r.appt,r.delivery,r.status])].map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'MosaicMove_LR_Export_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('CSV exported ✓');
+}
+
+// ══════════════════════════════════════════════════════
+// TWO-STAGE MIS UPLOAD ENGINE
+// ══════════════════════════════════════════════════════
+
+// Column mapping per partner — normalises varied header names to standard keys
+const COLUMN_MAPS = {
+  // Standard keys: lr, consignee, warehouse, channel, dispatch, appt, expected, status, delivery, remarks
+  Everest: { 'LR Number':'lr','Consignee Name':'consignee','Origin WH':'warehouse','Channel':'channel','Dispatch Date':'dispatch','Appointment Date':'appt','Delivery Status':'status','Delivery Date':'delivery','Remarks':'remarks' },
+  Buraq:   { 'LR No.':'lr','Consignee':'consignee','Warehouse':'warehouse','Channel Type':'channel','Dispatch Date':'dispatch','Appt. Date':'appt','Status':'status','Delivery Date':'delivery' },
+  Rivigo:  { 'Docket No.':'lr','Receiver Name':'consignee','Origin Hub':'warehouse','Business Type':'channel','Booking Date':'dispatch','EDD':'expected','Delivery Status':'status','Delivery Date':'delivery','Exception Reason':'remarks' },
+  Sitics:  { 'AWB / LR Number':'lr','Customer':'consignee','Dispatch Hub':'warehouse','Channel':'channel','Ship Date':'dispatch','Scheduled Delivery':'expected','Current Status':'status','Actual Delivery':'delivery','Attempt Count':'remarks' }
+};
+
+// Generic fallback fuzzy map for unknown partners
+const FUZZY_MAP = {
+  lr:        ['lr','lr number','lr no','docket','awb','consignment','shipment id'],
+  consignee: ['consignee','customer','receiver','client'],
+  warehouse: ['warehouse','hub','origin','wh'],
+  channel:   ['channel','type','business type'],
+  dispatch:  ['dispatch','booking','ship date','dispatch date'],
+  appt:      ['appointment','appt','slot'],
+  expected:  ['edd','expected','scheduled'],
+  status:    ['status','delivery status','current status'],
+  delivery:  ['delivery date','actual delivery','delivered on'],
+  remarks:   ['remarks','exception','reason','attempt']
+};
+
+function normaliseHeaders(rawHeaders, partnerName) {
+  const map = COLUMN_MAPS[partnerName] || {};
+  const result = {};
+  rawHeaders.forEach((h, idx) => {
+    const trimmed = (h || '').toString().trim();
+    if (map[trimmed]) {
+      result[map[trimmed]] = idx;
+    } else {
+      // Fuzzy fallback
+      const lower = trimmed.toLowerCase();
+      Object.entries(FUZZY_MAP).forEach(([key, variants]) => {
+        if (result[key] === undefined && variants.some(v => lower.includes(v))) {
+          result[key] = idx;
+        }
+      });
+    }
+  });
+  return result;
+}
+
+function parseDate(val) {
+  if (!val) return null;
+  if (typeof val === 'number') {
+    // Excel serial date
+    const d = new Date((val - 25569) * 86400 * 1000);
+    return d.toISOString().slice(0,10);
+  }
+  const d = new Date(val);
+  if (!isNaN(d)) return d.toISOString().slice(0,10);
+  return null;
+}
+
+// ── WAREHOUSE BASE FILE UPLOAD ─────────────────────────
+async function uploadWarehouseFile(file, partnerName, uploadedBy) {
+  const partner = partners.find(p => p.name === partnerName);
+  if (!partner) throw new Error('Partner not found: ' + partnerName);
+
+  // Read file with SheetJS
+  const data = await file.arrayBuffer();
+  const wb   = XLSX.read(data, { type:'array', cellDates:false });
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  if (rows.length < 2) throw new Error('File appears empty');
+
+  const headers  = rows[0].map(h => (h||'').toString().trim());
+  const colMap   = normaliseHeaders(headers, partnerName);
+  const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+  if (!colMap.lr) throw new Error('Could not find LR Number column. Check file format.');
+
+  // Create upload record
+  const { data: uploadRec, error: uploadErr } = await db.from('uploads').insert({
+    upload_type:  'warehouse_base',
+    partner_id:   partner.id,
+    filename:     file.name,
+    row_count:    dataRows.length,
+    uploaded_by:  uploadedBy,
+    status:       'processing'
+  }).select().single();
+  if (uploadErr) throw uploadErr;
+
+  // Batch insert shipments
+  const records = dataRows.map(row => ({
+    lr_number:         (row[colMap.lr]||'').toString().trim(),
+    partner_id:        partner.id,
+    warehouse:         colMap.warehouse !== undefined ? (row[colMap.warehouse]||'').toString().trim() : partner.warehouses?.[0] || 'Unknown',
+    channel:           colMap.channel   !== undefined ? (row[colMap.channel]||'').toString().trim()   : 'Offline',
+    consignee:         colMap.consignee !== undefined ? (row[colMap.consignee]||'').toString().trim() : 'Unknown',
+    dispatch_date:     parseDate(colMap.dispatch !== undefined ? row[colMap.dispatch] : null),
+    appt_date:         parseDate(colMap.appt     !== undefined ? row[colMap.appt]     : null),
+    expected_delivery: parseDate(colMap.expected !== undefined ? row[colMap.expected] : null),
+    delivery_status:   'Pending',
+    created_by:        uploadedBy,
+    warehouse_upload_id: uploadRec.id
+  })).filter(r => r.lr_number);
+
+  // Upsert — if LR exists, update; if new, insert
+  const { error: insertErr } = await db.from('shipments').upsert(records, { onConflict:'lr_number', ignoreDuplicates:false });
+  if (insertErr) {
+    await db.from('uploads').update({ status:'failed', error_log: insertErr.message }).eq('id', uploadRec.id);
+    throw insertErr;
+  }
+
+  await db.from('uploads').update({ status:'complete', row_count: records.length }).eq('id', uploadRec.id);
+  return { inserted: records.length, uploadId: uploadRec.id };
+}
+
+// ── PARTNER MIS UPLOAD ─────────────────────────────────
+async function uploadMISFile(file, partnerName, uploadedBy) {
+  const partner = partners.find(p => p.name === partnerName);
+  if (!partner) throw new Error('Partner not found: ' + partnerName);
+
+  const data = await file.arrayBuffer();
+  const wb   = XLSX.read(data, { type:'array', cellDates:false });
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  if (rows.length < 2) throw new Error('File appears empty');
+
+  const headers  = rows[0].map(h => (h||'').toString().trim());
+  const colMap   = normaliseHeaders(headers, partnerName);
+  const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+  if (!colMap.lr) throw new Error('Could not find LR Number column. Check file format.');
+
+  // Create upload record
+  const { data: uploadRec, error: uploadErr } = await db.from('uploads').insert({
+    upload_type: 'partner_mis',
+    partner_id:  partner.id,
+    filename:    file.name,
+    row_count:   dataRows.length,
+    uploaded_by: uploadedBy,
+    status:      'processing'
+  }).select().single();
+  if (uploadErr) throw uploadErr;
+
+  let matched = 0, unmatched = 0;
+  const misRecords      = [];
+  const unmatchedRecords = [];
+
+  // Get all existing LR numbers for this partner for fast lookup
+  const { data: existingLRs } = await db
+    .from('shipments')
+    .select('lr_number')
+    .eq('partner_id', partner.id);
+  const lrSet = new Set((existingLRs||[]).map(r => r.lr_number));
+
+  for (const row of dataRows) {
+    const lr = (row[colMap.lr]||'').toString().trim();
+    if (!lr) continue;
+
+    if (lrSet.has(lr)) {
+      // MATCHED — create MIS update and update shipment status
+      const newStatus = (row[colMap.status]||'').toString().trim() || 'In Transit';
+      const mappedStatus = mapStatusToStandard(newStatus);
+
+      misRecords.push({
+        lr_number:       lr,
+        partner_id:      partner.id,
+        delivery_status: mappedStatus,
+        actual_delivery: parseDate(colMap.delivery !== undefined ? row[colMap.delivery] : null),
+        remarks:         colMap.remarks !== undefined ? (row[colMap.remarks]||'').toString().trim() : null,
+        mis_upload_id:   uploadRec.id,
+        match_status:    'matched',
+        updated_by:      uploadedBy
+      });
+      matched++;
+    } else {
+      // UNMATCHED — flag it
+      unmatchedRecords.push({
+        lr_number:    lr,
+        partner_id:   partner.id,
+        mis_upload_id: uploadRec.id,
+        raw_row:      JSON.stringify(row)
+      });
+      unmatched++;
+    }
+  }
+
+  // Insert MIS updates
+  if (misRecords.length > 0) {
+    const { error: misErr } = await db.from('mis_updates').insert(misRecords);
+    if (misErr) console.error('MIS insert error:', misErr);
+
+    // Update shipment statuses in bulk
+    for (const rec of misRecords) {
+      await db.from('shipments')
+        .update({ delivery_status: rec.delivery_status })
+        .eq('lr_number', rec.lr_number);
+    }
+  }
+
+  // Log unmatched LRs
+  if (unmatchedRecords.length > 0) {
+    await db.from('unmatched_lrs').insert(unmatchedRecords);
+  }
+
+  // Update upload record with results
+  await db.from('uploads').update({
+    status:          'complete',
+    matched_count:   matched,
+    unmatched_count: unmatched
+  }).eq('id', uploadRec.id);
+
+  return { matched, unmatched, total: dataRows.length, uploadId: uploadRec.id };
+}
+
+function mapStatusToStandard(raw) {
+  const r = raw.toLowerCase();
+  if (r.includes('deliver')) return 'Delivered';
+  if (r.includes('transit') || r.includes('progress') || r.includes('dispatch')) return 'In Transit';
+  if (r.includes('delay')) return 'Delayed';
+  if (r.includes('attempt') || r.includes('undeliver') || r.includes('failed attempt')) return 'Attempted/UD';
+  if (r.includes('rto') || r.includes('return') || r.includes('fail')) return 'Failed/RTO';
+  return 'In Transit';
+}
+
+// ── MIS TAB UPLOAD HANDLER ─────────────────────────────
+// Determines upload type from the UI toggle and calls the right function
+let mdmUploadType   = 'warehouse_base'; // 'warehouse_base' or 'partner_mis'
+let mdmSelectedPartner = '';
+let mdmSelectedFile    = null;
+
+function setUploadType(type, btn) {
+  mdmUploadType = type;
+  document.querySelectorAll('.upload-type-btn').forEach(b => {
+    b.style.background = 'var(--surface2)';
+    b.style.color      = 'var(--text2)';
+    b.style.borderColor = 'var(--border)';
+  });
+  btn.style.background  = 'var(--accent)';
+  btn.style.color       = '#fff';
+  btn.style.borderColor = 'var(--accent)';
+
+  // Update helper text
+  const helper = document.getElementById('upload-type-helper');
+  if (helper) {
+    helper.textContent = type === 'warehouse_base'
+      ? 'Creates new shipment records. LR numbers become the primary key.'
+      : 'Looks up LR numbers from base file and updates delivery status.';
+  }
+}
+
+async function mdmUpload() {
+  if (!mdmSelectedPartner || !mdmSelectedFile) return;
+  const btn = document.getElementById('mdm-upload-btn');
+  btn.textContent = 'Uploading…'; btn.style.background = 'var(--pending)'; btn.disabled = true;
+
+  try {
+    let result;
+    if (mdmUploadType === 'warehouse_base') {
+      setTimeout(() => { btn.textContent = 'Creating records…'; btn.style.background = 'var(--intransit)'; }, 800);
+      result = await uploadWarehouseFile(mdmSelectedFile, mdmSelectedPartner, currentUserEmail || 'unknown');
+      btn.textContent = '✓ Uploaded'; btn.style.background = 'var(--delivered)';
+      showToast(`✓ ${result.inserted} LR records created for ${mdmSelectedPartner}`);
+    } else {
+      setTimeout(() => { btn.textContent = 'Matching LRs…'; btn.style.background = 'var(--intransit)'; }, 800);
+      result = await uploadMISFile(mdmSelectedFile, mdmSelectedPartner, currentUserEmail || 'unknown');
+      btn.textContent = '✓ Uploaded'; btn.style.background = 'var(--delivered)';
+
+      if (result.unmatched > 0) {
+        showToast(`✓ ${result.matched} matched · ⚠ ${result.unmatched} LRs not found in base file`);
+      } else {
+        showToast(`✓ ${result.matched} / ${result.total} LRs updated for ${mdmSelectedPartner}`);
+      }
+    }
+
+    // Reload data
+    await Promise.all([loadShipments(), loadStats(), loadUploadHistory()]);
+    mdmPartnerChanged(mdmSelectedPartner); // refresh partner stats panel
+
+  } catch(e) {
+    btn.textContent = '✗ Failed'; btn.style.background = 'var(--failed)';
+    showToast('✗ Upload failed: ' + e.message);
+    console.error(e);
+  }
+
+  setTimeout(() => {
+    btn.textContent = 'Upload ↑'; btn.style.background = 'var(--accent)';
+    btn.disabled = false;
+    mdmSelectedFile = null;
+    document.getElementById('mdm-file-input').value = '';
+    resetDropZone(); updateMdmValidation();
+  }, 2500);
+}
+
+// ── UPLOAD HISTORY RENDER ──────────────────────────────
+const partnerColors = { Everest:'p-everest', Buraq:'p-buraq', Rivigo:'p-rivigo', Sitics:'p-sitics' };
+
+function renderUploadHistory() {
+  const tbody = document.getElementById('upload-history-body');
+  if (!tbody) return;
+  if (uploadHistory.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3);font-family:var(--font-mono);font-size:12px">No uploads yet — upload a Warehouse Base File to get started</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = uploadHistory.map(r => {
+    const pName   = r.partners?.name || r.partner || '—';
+    const pClass  = partnerColors[pName] || 'partner-badge';
+    const typeTag = r.upload_type === 'warehouse_base'
+      ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(108,71,255,0.08);color:#6c47ff;padding:2px 7px;border-radius:4px">BASE FILE</span>`
+      : `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(16,185,129,0.08);color:#059669;padding:2px 7px;border-radius:4px">MIS</span>`;
+    const matchInfo = r.upload_type === 'partner_mis' && r.matched_count != null
+      ? `<br><span style="font-size:9px;color:var(--text3)">${r.matched_count} matched · ${r.unmatched_count||0} unmatched</span>` : '';
+    return `<tr>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle">
+        <span class="partner-badge ${pClass}">${pName}</span>
+      </td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border)">${typeTag}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.filename}">${r.filename}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;font-family:var(--font-mono);font-weight:600;color:var(--text)">${(r.row_count||0).toLocaleString()}${matchInfo}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--text2)">${r.uploaded_by||'—'}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--text3)">${fmtDate(r.uploaded_at)}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <span class="status-pill ${r.status==='complete'?'s-delivered':'s-delayed'}">${r.status==='complete'?'Success':'Failed'}</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── SAVE NEW PARTNER TO DB ─────────────────────────────
+async function saveNewPartner() {
+  const name    = document.getElementById('np-name')?.value?.trim();
+  const code    = document.getElementById('np-code')?.value?.trim();
+  const channel = document.getElementById('np-channel')?.value;
+  if (!name)    { showToast('⚠ Partner name is required'); return; }
+  if (!code)    { showToast('⚠ Partner code is required'); return; }
+  if (activeLogisticsTypes.size === 0) { showToast('⚠ Select at least one logistics type'); return; }
+  if (!channel) { showToast('⚠ Select a channel'); return; }
+
+  const colors = ['#0ea5e9','#a855f7','#f43f5e','#14b8a6','#f97316','#84cc16'];
+  const color  = colors[partners.length % colors.length];
+  const warehouses = Array.from(document.getElementById('np-warehouse')?.selectedOptions||[]).map(o=>o.value);
+
+  const { error } = await db.from('partners').insert({
+    name, code: code.toUpperCase(), color,
+    logistics_type: [...activeLogisticsTypes],
+    channel,
+    warehouses: warehouses.length ? warehouses : ['Bhiwandi'],
+    contact_name:  document.getElementById('np-contact')?.value?.trim() || null,
+    contact_email: document.getElementById('np-email')?.value?.trim()   || null,
+    sla_terms:     document.getElementById('np-notes')?.value?.trim()   || null,
+    status:        'active',
+    created_by:    currentUserEmail || 'unknown'
+  });
+
+  if (error) { showToast('✗ Error saving partner: ' + error.message); return; }
+  closeAddPartnerModal();
+  showToast(`${name} added as a B2B partner ✓`);
+  await loadPartners();
+}
+
+// ── MDM PARTNER PANEL ──────────────────────────────────
+// (loads live stats from DB instead of hardcoded values)
+async function mdmPartnerChanged(val) {
+  mdmSelectedPartner = val;
+  mdmSelectedFile    = null;
+  document.getElementById('mdm-file-input').value = '';
+  resetDropZone(); updateMdmValidation();
+
+  const infoEl  = document.getElementById('mdm-partner-info');
+  const colEl   = document.getElementById('mdm-col-map');
+  const emptyEl = document.getElementById('mdm-empty-state');
+  if (!val) {
+    if(infoEl) infoEl.style.display='none';
+    if(colEl)  colEl.style.display='none';
+    if(emptyEl) emptyEl.style.display='block';
+    return;
+  }
+
+  const p = partners.find(x => x.name === val);
+  if (!p) return;
+
+  if(emptyEl) emptyEl.style.display='none';
+  if(infoEl)  infoEl.style.display='block';
+  if(colEl)   colEl.style.display='block';
+
+  document.getElementById('mdm-info-dot').style.background = p.color;
+  const nameEl = document.getElementById('mdm-info-name');
+  if (nameEl) { nameEl.textContent = val; nameEl.style.color = p.color; }
+
+  // Fetch live stats for this partner
+  const { data: stats } = await db
+    .from('shipment_status_view')
+    .select('delivery_status')
+    .eq('partner_name', val);
+
+  const total     = (stats||[]).length;
+  const delivered = (stats||[]).filter(r=>r.delivery_status==='Delivered').length;
+  const transit   = (stats||[]).filter(r=>r.delivery_status==='In Transit').length;
+  const delayed   = (stats||[]).filter(r=>r.delivery_status==='Delayed').length;
+
+  // Get last upload time
+  const { data: lastUp } = await db
+    .from('uploads')
+    .select('uploaded_at, status')
+    .eq('partner_id', p.id)
+    .order('uploaded_at', { ascending:false })
+    .limit(1);
+  const lastSync = lastUp?.[0] ? fmtDate(lastUp[0].uploaded_at) : 'Not yet uploaded';
+  const syncStatus = total > 0 ? 'live' : 'new';
+
+  const statusEl = document.getElementById('mdm-info-status');
+  if (statusEl) {
+    const labels = { live:'LIVE', new:'NEW', stale:'STALE' };
+    const colors = { live:'rgba(16,185,129,0.1)', new:'rgba(15,122,255,0.1)', stale:'rgba(255,107,53,0.1)' };
+    const txts   = { live:'#059669', new:'var(--accent)', stale:'#ff6b35' };
+    statusEl.textContent = labels[syncStatus]||'NEW';
+    statusEl.style.background = colors[syncStatus]||colors.new;
+    statusEl.style.color      = txts[syncStatus]||txts.new;
+  }
+
+  const metaEl = document.getElementById('mdm-info-meta');
+  if (metaEl) metaEl.innerHTML = `Route: ${p.logistics_type?.join(' + ')} · ${p.channel}<br>Last sync: ${lastSync}`;
+
+  const setS = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  setS('mdm-stat-total', total);
+  setS('mdm-stat-del',   delivered);
+  setS('mdm-stat-tr',    transit);
+  setS('mdm-stat-dl',    delayed);
+
+  // Column map
+  const colMap = COLUMN_MAPS[val];
+  const colList = document.getElementById('mdm-col-list');
+  if (colList && colMap) {
+    const partnerData = Object.values(COLUMN_MAPS)[Object.keys(COLUMN_MAPS).indexOf(val)];
+    const cols = partnerData
+      ? Object.entries(partnerData).map(([name, std]) => ({
+          name, req: ['lr','consignee','warehouse','dispatch','status'].includes(std)
+        }))
+      : [];
+    colList.innerHTML = cols.map(c => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:${c.req?'rgba(15,122,255,0.04)':'#fff'};border-radius:5px;border:1px solid var(--border)">
+        <span style="font-size:10px;font-family:var(--font-mono);color:${c.req?'var(--accent)':'var(--text3)'};width:14px">${c.req?'*':''}</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:${c.req?'var(--text)':'var(--text2)'}">${c.name}</span>
+        <span style="margin-left:auto;font-size:9px;font-family:var(--font-mono);color:${c.req?'var(--accent)':'var(--text3)'}">${c.req?'REQUIRED':'OPTIONAL'}</span>
+      </div>`).join('');
+  }
+
+  const selEl = document.getElementById('mdm-partner-select');
+  if (selEl) selEl.style.borderColor = p.color;
+}
+
+// ── CURRENT USER (set by auth) ─────────────────────────
+let currentUserEmail = '';
+
+// After auth grants access, capture email and load live data
+function onAuthSuccess(user) {
+  currentUserEmail = user.email;
+  loadAllData();
+  subscribeRealtime();
+}
+
 
 function getFiltered() {
   return shipments.filter(r => {
@@ -1135,9 +1985,18 @@ function getFiltered() {
   });
 }
 
+const PAGE_SIZE = 10;
+let currentPage = 1;
+
 function renderTable() {
   const data = getFiltered();
-  document.getElementById('lr-tbody').innerHTML = data.map(r => `
+  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = 1;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end   = Math.min(start + PAGE_SIZE, data.length);
+  const pageData = data.slice(start, end);
+
+  document.getElementById('lr-tbody').innerHTML = pageData.map(r => `
     <tr>
       <td><span class="lr-code">${r.lr}</span></td>
       <td><span class="partner-badge ${r.pClass}">${r.partner}</span></td>
@@ -1150,13 +2009,69 @@ function renderTable() {
       <td><span class="status-pill ${r.sClass}">${r.status}</span></td>
       <td><button class="action-btn" onclick="showToast('${r.lr} opened')">View</button></td>
     </tr>`).join('');
-  document.getElementById('page-info').textContent = `Showing 1–${Math.min(15,data.length)} of ${data.length} shipments`;
+
+  // Update page info
+  if (data.length === 0) {
+    document.getElementById('page-info').textContent = 'No shipments found';
+  } else {
+    document.getElementById('page-info').textContent =
+      `Showing ${start + 1}–${end} of ${data.length} shipments`;
+  }
+
+  // Only show pagination if more than one page
+  const paginationEl = document.getElementById('page-btns');
+  if (totalPages <= 1) {
+    paginationEl.style.display = 'none';
+    return;
+  }
+  paginationEl.style.display = 'flex';
+
+  // Build pagination buttons (prev, pages, next)
+  let btns = '';
+  btns += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>‹ Prev</button>`;
+
+  // Show max 5 page numbers with ellipsis
+  let pages = [];
+  if (totalPages <= 5) {
+    pages = Array.from({length: totalPages}, (_, i) => i + 1);
+  } else if (currentPage <= 3) {
+    pages = [1, 2, 3, 4, '...', totalPages];
+  } else if (currentPage >= totalPages - 2) {
+    pages = [1, '...', totalPages-3, totalPages-2, totalPages-1, totalPages];
+  } else {
+    pages = [1, '...', currentPage-1, currentPage, currentPage+1, '...', totalPages];
+  }
+
+  pages.forEach(p => {
+    if (p === '...') {
+      btns += `<span style="padding:4px 6px;font-family:var(--font-mono);font-size:11px;color:var(--text3)">…</span>`;
+    } else {
+      btns += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+    }
+  });
+
+  btns += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>Next ›</button>`;
+  paginationEl.innerHTML = btns;
 }
+
+function goToPage(page) {
+  const data = getFiltered();
+  const totalPages = Math.ceil(data.length / PAGE_SIZE);
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  renderTable();
+  // Scroll table into view smoothly
+  document.querySelector('.table-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Reset to page 1 on any filter change
+function resetPage() { currentPage = 1; }
+
 renderTable();
 
-function filterTable(q)          { searchQ = q.toLowerCase(); renderTable(); }
-function filterByStatus(s)       { statusQ = s; renderTable(); }
-function filterByPartnerDrop(p)  { partnerDropQ = p; renderTable(); }
+function filterTable(q)          { searchQ = q.toLowerCase(); resetPage(); renderTable(); }
+function filterByStatus(s)       { statusQ = s; resetPage(); renderTable(); }
+function filterByPartnerDrop(p)  { partnerDropQ = p; resetPage(); renderTable(); }
 
 // Partner sidebar
 function setPartner(p, el) {
@@ -1171,7 +2086,7 @@ function setPartner(p, el) {
   } else {
     el.classList.add('active');
   }
-  renderTable();
+  resetPage(); renderTable();
 }
 
 // Channel
@@ -1179,7 +2094,7 @@ function setChannel(btn, ch) {
   document.querySelectorAll('.ch-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   activeChannel = ch;
-  renderTable();
+  resetPage(); renderTable();
 }
 
 // Tab + nav
@@ -1188,6 +2103,12 @@ function switchView(id, tabEl) {
   document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('view-' + id).classList.add('active');
   tabEl.classList.add('active');
+  // Sync sidebar nav highlight
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navEl = document.querySelector(`.nav-item[data-view="${id}"]`);
+  if (navEl) navEl.classList.add('active');
+  // Update page title
+  if (navTitles[id]) document.getElementById('page-title').textContent = navTitles[id];
 }
 
 const navMap = { dashboard:0, lrboard:1, mis:2, timeline:3 };
@@ -1693,6 +2614,9 @@ function grantAccess(user) {
   // Hide auth screen, show app
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app-shell').style.display = 'block';
+
+  // Load live data from Supabase
+  if (typeof onAuthSuccess === 'function') onAuthSuccess(user);
 }
 
 // ── Sign out ──
