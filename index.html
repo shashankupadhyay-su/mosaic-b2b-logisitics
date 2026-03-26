@@ -386,6 +386,151 @@
   ::-webkit-scrollbar-track { background:var(--bg); }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:10px; }
 </style>
+
+<script>
+// ══════════════════════════════════════════
+// AUTH FUNCTIONS — defined early in <head>
+// so the login button can call them immediately
+// ══════════════════════════════════════════
+
+const GOOGLE_CLIENT_ID = '846484058604-47uuotrjc6jtsifmdrn4avmq6aaepeg7.apps.googleusercontent.com';
+const ALLOWED_DOMAIN   = 'mosaicwellness.in';
+const SESSION_KEY      = 'mw_b2b_auth_session';
+
+function saveSession(user) {
+  const session = { email: user.email, name: user.name, picture: user.picture, expiry: Date.now() + 8 * 60 * 60 * 1000 };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function getSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+    if (s && s.expiry > Date.now()) return s;
+    sessionStorage.removeItem(SESSION_KEY);
+    return null;
+  } catch { return null; }
+}
+
+function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  if (el) { el.textContent = msg; el.classList.add('show'); }
+  const ld = document.getElementById('auth-loading');
+  if (ld) ld.classList.remove('show');
+}
+
+function showAuthLoading() {
+  const ld = document.getElementById('auth-loading');
+  if (ld) ld.classList.add('show');
+  const er = document.getElementById('auth-error');
+  if (er) er.classList.remove('show');
+}
+
+function grantAccess(user) {
+  const initials = (user.name || 'U').split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
+  const initialsEl = document.getElementById('user-initials');
+  if (initialsEl) initialsEl.textContent = initials;
+  const nameEl = document.getElementById('user-display-name');
+  if (nameEl) nameEl.textContent = (user.name || '').split(' ')[0];
+
+  if (user.picture) {
+    const chip = document.getElementById('user-chip');
+    const placeholder = document.getElementById('user-initials');
+    if (chip && placeholder) {
+      const img = document.createElement('img');
+      img.src = user.picture; img.className = 'user-avatar'; img.alt = user.name;
+      img.onerror = () => {};
+      chip.replaceChild(img, placeholder);
+    }
+  }
+
+  const authScreen = document.getElementById('auth-screen');
+  if (authScreen) authScreen.classList.add('hidden');
+  const appShell = document.getElementById('app-shell');
+  if (appShell) appShell.style.display = 'block';
+
+  if (typeof onAuthSuccess === 'function') onAuthSuccess(user);
+}
+
+function signOut() {
+  clearSession();
+  if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
+  location.reload();
+}
+
+function handleGoogleCredential(response) {
+  showAuthLoading();
+  try {
+    const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const email   = payload.email   || '';
+    const name    = payload.name    || email.split('@')[0];
+    const picture = payload.picture || '';
+    const domain  = email.split('@')[1] || '';
+
+    if (domain !== ALLOWED_DOMAIN) {
+      showAuthError('Access denied. Only @' + ALLOWED_DOMAIN + ' accounts are permitted. You signed in with: ' + email);
+      if (window.google) google.accounts.id.disableAutoSelect();
+      return;
+    }
+    const user = { email, name, picture };
+    saveSession(user);
+    grantAccess(user);
+  } catch (err) {
+    showAuthError('Authentication failed. Please try again.');
+    console.error('Auth error:', err);
+  }
+}
+
+function startGoogleAuth() {
+  showAuthLoading();
+
+  if (!window.google || !google.accounts) {
+    // Google SDK not loaded yet — wait and retry once
+    setTimeout(() => {
+      if (!window.google || !google.accounts) {
+        showAuthError('Google Sign-In could not load. Please check your internet connection and refresh.');
+        return;
+      }
+      _triggerGooglePrompt();
+    }, 1500);
+    return;
+  }
+  _triggerGooglePrompt();
+}
+
+function _triggerGooglePrompt() {
+  google.accounts.id.initialize({
+    client_id:             GOOGLE_CLIENT_ID,
+    callback:              handleGoogleCredential,
+    auto_select:           false,
+    cancel_on_tap_outside: true,
+    hd:                    ALLOWED_DOMAIN
+  });
+  google.accounts.id.prompt(notification => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      document.getElementById('auth-loading')?.classList.remove('show');
+      // One Tap suppressed — render a visible button instead
+      const btnArea = document.getElementById('google-btn-area');
+      if (btnArea) {
+        google.accounts.id.renderButton(btnArea, {
+          theme: 'outline', size: 'large', width: 340,
+          text: 'continue_with', shape: 'rectangular'
+        });
+      }
+    }
+  });
+}
+
+function initGoogleAuth() {
+  const session = getSession();
+  if (session) { grantAccess(session); return; }
+  // Session expired — show login screen, no auto-prompt
+}
+
+window.addEventListener('load', () => setTimeout(initGoogleAuth, 200));
+</script>
+
 </head>
 <body>
 
@@ -418,6 +563,7 @@
       Use your company Google account to sign in.
     </div>
 
+    <div id="google-btn-area" style="display:flex;justify-content:center;margin-bottom:8px"></div>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-loading" id="auth-loading">Verifying your account…</div>
   </div>
@@ -2541,193 +2687,8 @@ function addUploadHistory(partner, filename) {
 
 renderUploadHistory();
 
-// ══════════════════════════════════════════
-// GOOGLE SSO AUTH — @mosaicwellness.in only
-// ══════════════════════════════════════════
+// Auth functions moved to <head> script block
 
-// ⚠ SETUP REQUIRED: Replace with your real Google OAuth Client ID
-// Steps: console.cloud.google.com → Create Project → APIs & Services
-// → Credentials → OAuth 2.0 Client ID → Web application
-// → Authorised JS origins: your GitHub Pages URL
-const GOOGLE_CLIENT_ID = '846484058604-47uuotrjc6jtsifmdrn4avmq6aaepeg7.apps.googleusercontent.com';
-const ALLOWED_DOMAIN   = 'mosaicwellness.in';
-const SESSION_KEY      = 'mw_b2b_auth_session';
-
-// ── Session helpers ──
-function saveSession(user) {
-  const session = {
-    email:   user.email,
-    name:    user.name,
-    picture: user.picture,
-    expiry:  Date.now() + 8 * 60 * 60 * 1000  // 8-hour session
-  };
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-function getSession() {
-  try {
-    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
-    if (s && s.expiry > Date.now()) return s;
-    sessionStorage.removeItem(SESSION_KEY);
-    return null;
-  } catch { return null; }
-}
-
-function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
-}
-
-// ── Auth UI helpers ──
-function showAuthError(msg) {
-  const el = document.getElementById('auth-error');
-  el.textContent = msg;
-  el.classList.add('show');
-  document.getElementById('auth-loading').classList.remove('show');
-}
-
-function showAuthLoading() {
-  document.getElementById('auth-loading').classList.add('show');
-  document.getElementById('auth-error').classList.remove('show');
-}
-
-// ── Grant access — show the app ──
-function grantAccess(user) {
-  // Populate user chip in topbar
-  const initials = user.name
-    .split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
-  document.getElementById('user-initials').textContent = initials;
-  document.getElementById('user-display-name').textContent =
-    user.name.split(' ')[0];  // First name only
-
-  // If user has a profile picture, use it
-  if (user.picture) {
-    const chip = document.getElementById('user-chip');
-    const placeholder = document.getElementById('user-initials');
-    const img = document.createElement('img');
-    img.src = user.picture;
-    img.className = 'user-avatar';
-    img.alt = user.name;
-    img.onerror = () => {}; // fallback silently to initials
-    chip.replaceChild(img, placeholder);
-  }
-
-  // Hide auth screen, show app
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('app-shell').style.display = 'block';
-
-  // Load live data from Supabase
-  if (typeof onAuthSuccess === 'function') onAuthSuccess(user);
-}
-
-// ── Sign out ──
-function signOut() {
-  clearSession();
-  // Revoke Google token if available
-  if (window.google && google.accounts) {
-    google.accounts.id.disableAutoSelect();
-  }
-  // Reload to show auth screen again
-  location.reload();
-}
-
-// ── Google One Tap / popup callback ──
-function handleGoogleCredential(response) {
-  showAuthLoading();
-
-  try {
-    // Decode JWT payload (header.payload.signature)
-    const payload = JSON.parse(
-      atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-    );
-
-    const email   = payload.email   || '';
-    const name    = payload.name    || email.split('@')[0];
-    const picture = payload.picture || '';
-    const domain  = email.split('@')[1] || '';
-
-    // ── Domain enforcement ──
-    if (domain !== ALLOWED_DOMAIN) {
-      showAuthError(
-        `Access denied. Only @${ALLOWED_DOMAIN} accounts are permitted.\n` +
-        `You signed in with: ${email}`
-      );
-      // Immediately sign out from Google to prevent token reuse
-      if (window.google) google.accounts.id.disableAutoSelect();
-      return;
-    }
-
-    // ── Valid domain — save session and enter app ──
-    const user = { email, name, picture };
-    saveSession(user);
-    grantAccess(user);
-
-  } catch (err) {
-    showAuthError('Authentication failed. Please try again.');
-    console.error('Auth error:', err);
-  }
-}
-
-// ── Trigger Google auth popup ──
-function startGoogleAuth() {
-  if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com') {
-    // Dev mode: skip auth with a test account for local preview
-    showAuthLoading();
-    setTimeout(() => {
-      const devUser = {
-        email:   'shashank.upadhyay@mosaicwellness.in',
-        name:    'Shashank Upadhyay',
-        picture: ''
-      };      saveSession(devUser);
-      grantAccess(devUser);
-    }, 800);
-    return;
-  }
-
-  if (!window.google) {
-    showAuthError('Google Sign-In failed to load. Check your internet connection and try again.');
-    return;
-  }
-
-  showAuthLoading();
-  google.accounts.id.prompt(notification => {
-    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      // One Tap was suppressed — open popup manually
-      document.getElementById('auth-loading').classList.remove('show');
-      google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'openid email profile',
-        callback: () => {}
-      });
-    }
-  });
-}
-
-// ── Initialise Google Identity on load ──
-function initGoogleAuth() {
-  // First check for existing valid session
-  const session = getSession();
-  if (session) {
-    grantAccess(session);
-    return;
-  }
-
-  // No session — show auth screen and initialise Google
-  if (window.google && google.accounts) {
-    google.accounts.id.initialize({
-      client_id:        GOOGLE_CLIENT_ID,
-      callback:         handleGoogleCredential,
-      auto_select:      false,
-      cancel_on_tap_outside: true,
-      hd:               ALLOWED_DOMAIN   // Hint to Google to show only @mosaicwellness.in accounts
-    });
-  }
-}
-
-// Run auth init when page loads
-window.addEventListener('load', () => {
-  // Small delay to let Google SDK load
-  setTimeout(initGoogleAuth, 300);
-});
 
 // Toast
 function showToast(msg) {
