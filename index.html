@@ -528,7 +528,14 @@ function initGoogleAuth() {
   // Session expired — show login screen, no auto-prompt
 }
 
-window.addEventListener('load', () => setTimeout(initGoogleAuth, 200));
+window.addEventListener('load', () => {
+  setTimeout(initGoogleAuth, 200);
+  // Show empty table state immediately so UI doesn't look broken
+  const tbody = document.getElementById('lr-tbody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#9aa3b2;font-family:JetBrains Mono,monospace;font-size:12px">Sign in to load shipment data</td></tr>';
+  }
+});
 </script>
 
 </head>
@@ -642,10 +649,10 @@ window.addEventListener('load', () => setTimeout(initGoogleAuth, 200));
 
   <div class="content">
     <div class="view-tabs">
-      <div class="view-tab active" onclick="switchView('dashboard',this)">DASHBOARD</div>
-      <div class="view-tab"       onclick="switchView('lrboard',this)">LR BOARD</div>
-      <div class="view-tab"       onclick="switchView('mis',this)">MIS UPDATION</div>
-      <div class="view-tab"       onclick="switchView('timeline',this)">SHIPMENT TIMELINE</div>
+      <div class="view-tab active" onclick="switchView('dashboard', this)">DASHBOARD</div>
+      <div class="view-tab"       onclick="switchView('lrboard', this)">LR BOARD</div>
+      <div class="view-tab"       onclick="switchView('mis', this)">MIS UPDATION</div>
+      <div class="view-tab"       onclick="switchView('timeline', this)">SHIPMENT TIMELINE</div>
     </div>
 
     <!-- ══ DASHBOARD ══ -->
@@ -1268,7 +1275,15 @@ window.addEventListener('load', () => setTimeout(initGoogleAuth, 200));
 // ══════════════════════════════════════════════════════
 const SUPABASE_URL  = 'https://tomqqnslqgokhdxqvzfs.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvbXFxbnNscWdva2hkeHF2emZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MTc3NTUsImV4cCI6MjA5MDA5Mzc1NX0.dWBoRn-6P_RITicnXaE4Mc6KICKRQSPvYg1y0ErokBI';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+// Wait for Supabase SDK to be ready
+let db;
+function initSupabase() {
+  if (window.supabase && window.supabase.createClient) {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    return true;
+  }
+  return false;
+}
 
 // ── In-memory state (loaded from DB) ──
 let shipments    = [];
@@ -2113,8 +2128,20 @@ let currentUserEmail = '';
 // After auth grants access, capture email and load live data
 function onAuthSuccess(user) {
   currentUserEmail = user.email;
-  loadAllData();
-  subscribeRealtime();
+  // Wait until Supabase SDK is available then load data
+  let attempts = 0;
+  const waitForSupabase = setInterval(() => {
+    attempts++;
+    if (initSupabase()) {
+      clearInterval(waitForSupabase);
+      loadAllData();
+      subscribeRealtime();
+    } else if (attempts > 20) {
+      clearInterval(waitForSupabase);
+      console.error('Supabase SDK failed to load after 2s');
+      showToast('⚠ Database connection failed — check your internet connection');
+    }
+  }, 100);
 }
 
 
@@ -2213,8 +2240,6 @@ function goToPage(page) {
 // Reset to page 1 on any filter change
 function resetPage() { currentPage = 1; }
 
-renderTable();
-
 function filterTable(q)          { searchQ = q.toLowerCase(); resetPage(); renderTable(); }
 function filterByStatus(s)       { statusQ = s; resetPage(); renderTable(); }
 function filterByPartnerDrop(p)  { partnerDropQ = p; resetPage(); renderTable(); }
@@ -2244,33 +2269,6 @@ function setChannel(btn, ch) {
 }
 
 // Tab + nav
-function switchView(id, tabEl) {
-  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('view-' + id).classList.add('active');
-  tabEl.classList.add('active');
-  // Sync sidebar nav highlight
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const navEl = document.querySelector(`.nav-item[data-view="${id}"]`);
-  if (navEl) navEl.classList.add('active');
-  // Update page title
-  if (navTitles[id]) document.getElementById('page-title').textContent = navTitles[id];
-}
-
-const navMap = { dashboard:0, lrboard:1, mis:2, timeline:3 };
-const navTitles = { dashboard:'Mosaic Move', lrboard:'LR Tracking', mis:'MIS Manager', timeline:'Shipment Timeline' };
-function setNav(el, id) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('page-title').textContent = navTitles[id];
-  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('view-' + id).classList.add('active');
-  const tabs = document.querySelectorAll('.view-tab');
-  if (tabs[navMap[id]]) tabs[navMap[id]].classList.add('active');
-}
-
-// Modal
 function openModal()  { document.getElementById('lr-modal').classList.add('open'); }
 function closeModal() { document.getElementById('lr-modal').classList.remove('open'); }
 function submitLR()   { closeModal(); showToast('LR entry saved ✓'); }
@@ -2284,77 +2282,6 @@ function exportCSV() {
   showToast('CSV exported ✓');
 }
 
-// ── MDM PARTNER DATA ──
-const partnerMDM = {
-  Everest: {
-    color: '#6c47ff', label: 'B2B + FTL · HYD + ECOM',
-    total: 142, delivered: 99, transit: 28, delayed: 15,
-    lastSync: '18 Mar 2026 · 17:45', status: 'live',
-    columns: [
-      { name: 'LR Number',       req: true  },
-      { name: 'Shipping Provider', req: true },
-      { name: 'Consignee Name',  req: true  },
-      { name: 'Origin WH',       req: true  },
-      { name: 'Dispatch Date',   req: true  },
-      { name: 'Appointment Date',req: false },
-      { name: 'Delivery Date',   req: false },
-      { name: 'Delivery Status', req: true  },
-      { name: 'Channel',         req: true  },
-      { name: 'Remarks',         req: false },
-    ]
-  },
-  Buraq: {
-    color: '#059669', label: 'B2B · BHIWANDI + BADDI',
-    total: 389, delivered: 315, transit: 58, delayed: 16,
-    lastSync: '19 Mar 2026 · 18:27', status: 'live',
-    columns: [
-      { name: 'LR No.',          req: true  },
-      { name: 'Carrier',         req: true  },
-      { name: 'Consignee',       req: true  },
-      { name: 'Warehouse',       req: true  },
-      { name: 'Dispatch Date',   req: true  },
-      { name: 'Appt. Date',      req: false },
-      { name: 'Delivery Date',   req: false },
-      { name: 'Status',          req: true  },
-      { name: 'Channel Type',    req: true  },
-      { name: 'POD Reference',   req: false },
-    ]
-  },
-  Rivigo: {
-    color: '#ff6b35', label: 'B2B · BHIWANDI + BADDI',
-    total: 217, delivered: 139, transit: 41, delayed: 37,
-    lastSync: '17 Mar 2026 · 09:10', status: 'stale',
-    columns: [
-      { name: 'Docket No.',      req: true  },
-      { name: 'Logistics Partner', req: true },
-      { name: 'Receiver Name',   req: true  },
-      { name: 'Origin Hub',      req: true  },
-      { name: 'Booking Date',    req: true  },
-      { name: 'EDD',             req: false },
-      { name: 'Delivery Date',   req: false },
-      { name: 'Delivery Status', req: true  },
-      { name: 'Business Type',   req: true  },
-      { name: 'Exception Reason',req: false },
-    ]
-  },
-  Sitics: {
-    color: '#d97706', label: 'B2B · ECOM / OFFLINE',
-    total: 95, delivered: 72, transit: 14, delayed: 9,
-    lastSync: '19 Mar 2026 · 16:53', status: 'live',
-    columns: [
-      { name: 'AWB / LR Number', req: true  },
-      { name: 'Partner Name',    req: true  },
-      { name: 'Customer',        req: true  },
-      { name: 'Dispatch Hub',    req: true  },
-      { name: 'Ship Date',       req: true  },
-      { name: 'Scheduled Delivery', req: false },
-      { name: 'Actual Delivery', req: false },
-      { name: 'Current Status',  req: true  },
-      { name: 'Channel',         req: true  },
-      { name: 'Attempt Count',   req: false },
-    ]
-  }
-};
 
 let mdmSelectedPartner = '';
 let mdmSelectedFile = null;
@@ -2684,8 +2611,6 @@ function addUploadHistory(partner, filename) {
   if (uploadHistory.length > 10) uploadHistory.pop();
   renderUploadHistory();
 }
-
-renderUploadHistory();
 
 // Auth functions moved to <head> script block
 
