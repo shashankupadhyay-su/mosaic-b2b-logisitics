@@ -590,6 +590,10 @@ window.addEventListener('load', () => {
   <div class="nav-item" onclick="setNav(this,'lrboard')" data-view="lrboard"><span style="font-size:15px">◎</span> LR Tracking <span class="nav-badge">3</span></div>
   <div class="nav-item" onclick="setNav(this,'mis')" data-view="mis"><span style="font-size:15px">▤</span> MIS Manager</div>
   <div class="nav-item" onclick="setNav(this,'timeline')" data-view="timeline"><span style="font-size:15px">⟳</span> Shipment Timeline</div>
+  <div class="nav-item" onclick="setNav(this,'consignees')" data-view="consignees"><span style="font-size:15px">◉</span> Consignee Master</div>
+  <div class="nav-item" onclick="setNav(this,'appointments')" data-view="appointments"><span style="font-size:15px">📅</span> Appointments</div>
+  <div class="nav-item" onclick="setNav(this,'serviceability')" data-view="serviceability"><span style="font-size:15px">🗺</span> Serviceability</div>
+  <div class="nav-item" onclick="setNav(this,'users')" data-view="users"><span style="font-size:15px">👥</span> Users</div>
 
   <div class="nav-section">Partners</div>
   <div id="pill-all" style="display:flex;align-items:center;gap:9px;padding:9px 14px;margin:1px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;background:rgba(15,122,255,0.08);color:var(--accent)" onclick="setPartner('all',this)">
@@ -634,6 +638,14 @@ window.addEventListener('load', () => {
         <button class="ch-btn" onclick="setChannel(this,'ecom')">ECOM/QCOM</button>
         <button class="ch-btn" onclick="setChannel(this,'offline')">OFFLINE</button>
       </div>
+      <div class="channel-toggle" id="brand-toggle">
+        <button class="ch-btn active" onclick="setBrand(this,'all')">ALL BRANDS</button>
+        <button class="ch-btn" onclick="setBrand(this,'MM')" title="Man Matters">MM</button>
+        <button class="ch-btn" onclick="setBrand(this,'BB')" title="Be Bodywise">BB</button>
+        <button class="ch-btn" onclick="setBrand(this,'LJ')" title="Little Joys">LJ</button>
+        <button class="ch-btn" onclick="setBrand(this,'RL')" title="Root Labs">RL</button>
+        <button class="ch-btn" onclick="setBrand(this,'OWN')" title="Only What's Needed">OWN</button>
+      </div>
       <div class="sync-btn" onclick="showToast('Syncing all partner data…')">
         <div class="sync-dot"></div> LIVE SYNC
       </div>
@@ -653,6 +665,10 @@ window.addEventListener('load', () => {
       <div class="view-tab"       onclick="switchView('lrboard', this)">LR BOARD</div>
       <div class="view-tab"       onclick="switchView('mis', this)">MIS UPDATION</div>
       <div class="view-tab"       onclick="switchView('timeline', this)">SHIPMENT TIMELINE</div>
+      <div class="view-tab"       onclick="switchView('consignees', this)">CONSIGNEE MASTER</div>
+      <div class="view-tab"       onclick="switchView('appointments', this)">APPOINTMENT TRACKER</div>
+      <div class="view-tab"       onclick="switchView('serviceability', this)">SERVICEABILITY</div>
+      <div class="view-tab"       onclick="switchView('users', this)">USERS</div>
     </div>
 
     <!-- ══ DASHBOARD ══ -->
@@ -749,6 +765,27 @@ window.addEventListener('load', () => {
             <div class="trio-sub trio-divider"><span class="trio-sub-label">Failed / RTO initiated</span><span class="trio-sub-val" style="color:var(--failed)">29</span></div>
           </div>
         </div>
+      </div>
+
+
+      <!-- APPOINTMENT DATE STRIP — embedded in dashboard -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.05);margin-bottom:20px">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-family:var(--font-head);font-weight:700;font-size:14px">Appointment Calendar</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">LRs with scheduled delivery appointments — by carrier</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button onclick="apptGoToday()" style="padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--text2)">Today</button>
+            <button onclick="apptChangePeriod(-7)" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--text2)">‹</button>
+            <span id="appt-period-label" style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);min-width:160px;text-align:center"></span>
+            <button onclick="apptChangePeriod(7)" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--text2)">›</button>
+          </div>
+        </div>
+        <!-- 7-day columns -->
+        <div id="appt-week-grid" style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)"></div>
+        <!-- LR list for selected day -->
+        <div id="appt-day-detail" style="padding:0"></div>
       </div>
 
       <!-- MID GRID -->
@@ -1126,6 +1163,384 @@ window.addEventListener('load', () => {
   </div>
 </div>
 
+
+    <!-- ══ APPOINTMENT TRACKER ══ -->
+    <div id="view-appointments" class="view-section">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div style="font-family:var(--font-head);font-weight:800;font-size:18px">Appointment Tracker</div>
+          <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">All LRs with scheduled appointment dates — carrier-wise tracking</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select id="appt-partner-filter" class="filter-select" onchange="renderApptView()">
+            <option value="">All Carriers</option>
+          </select>
+          <select id="appt-status-filter" class="filter-select" onchange="renderApptView()">
+            <option value="">All Status</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="today">Today</option>
+            <option value="missed">Missed / Overdue</option>
+            <option value="delivered">Delivered</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div class="kpi-card" style="border-top:3px solid var(--accent)">
+          <div class="kpi-label">Total Appointments</div>
+          <div class="kpi-value" id="akpi-total" style="color:var(--accent)">—</div>
+          <div class="kpi-delta">With confirmed appt. date</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--delivered)">
+          <div class="kpi-label">Today's Appointments</div>
+          <div class="kpi-value" id="akpi-today" style="color:var(--delivered)">—</div>
+          <div class="kpi-delta">Require action now</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--pending)">
+          <div class="kpi-label">Upcoming (7 days)</div>
+          <div class="kpi-value" id="akpi-upcoming" style="color:var(--pending)">—</div>
+          <div class="kpi-delta">Scheduled ahead</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--failed)">
+          <div class="kpi-label">Missed / Overdue</div>
+          <div class="kpi-value" id="akpi-missed" style="color:var(--failed)">—</div>
+          <div class="kpi-delta">Appt passed — not delivered</div>
+        </div>
+      </div>
+
+      <!-- Carrier breakdown cards -->
+      <div id="appt-carrier-breakdown" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
+
+      <!-- Full appointment table -->
+      <div class="table-section">
+        <div class="table-header">
+          <div class="table-title">All Appointment-Scheduled LRs</div>
+          <div class="table-controls">
+            <input class="search-input" id="appt-search" type="text" placeholder="Search LR / consignee…" oninput="renderApptView()" style="width:200px">
+            <button class="export-btn" onclick="exportApptCSV()">↓ Export</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead><tr>
+            <th>LR NUMBER</th>
+            <th>CARRIER</th>
+            <th>CONSIGNEE</th>
+            <th>CHANNEL</th>
+            <th>WAREHOUSE</th>
+            <th>DISPATCH DATE</th>
+            <th>APPT DATE</th>
+            <th>DAYS TO APPT</th>
+            <th>CURRENT STATUS</th>
+            <th>APPT STATUS</th>
+          </tr></thead>
+          <tbody id="appt-tbody">
+            <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Loading appointment data…</td></tr>
+          </tbody>
+        </table>
+        <div class="table-footer">
+          <span id="appt-table-info" class="page-info">—</span>
+        </div>
+      </div>
+    </div>
+
+<!-- SERVICEABILITY MASTER VIEW -->
+<div id="view-serviceability" class="view-section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:18px">Serviceability Master</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Origin → Destination lanes with carrier SLA commitments</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <select id="svc-warehouse-filter" class="filter-select" onchange="filterServiceability()">
+        <option value="">All Warehouses</option>
+        <option>Bhiwandi</option><option>Baddi</option><option>Hyderabad</option>
+      </select>
+      <select id="svc-partner-filter" class="filter-select" onchange="filterServiceability()">
+        <option value="">All Carriers</option>
+      </select>
+      <select id="svc-region-filter" class="filter-select" onchange="filterServiceability()">
+        <option value="">All Regions</option>
+        <option>North</option><option>South</option><option>East</option><option>West</option><option>Central</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+    <div class="kpi-card" style="border-top:3px solid var(--accent3)">
+      <div class="kpi-label">Total Lanes</div>
+      <div class="kpi-value" id="skpi-total" style="color:var(--accent3)">—</div>
+      <div class="kpi-delta">Origin→Destination pairs</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--delivered)">
+      <div class="kpi-label">Avg SLA Days</div>
+      <div class="kpi-value" id="skpi-avg" style="color:var(--delivered)">—</div>
+      <div class="kpi-delta">Committed transit days</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--accent)">
+      <div class="kpi-label">Active Carriers</div>
+      <div class="kpi-value" id="skpi-carriers" style="color:var(--accent)">—</div>
+      <div class="kpi-delta">On live lanes</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--pending)">
+      <div class="kpi-label">Warehouses</div>
+      <div class="kpi-value" id="skpi-warehouses" style="color:var(--pending)">—</div>
+      <div class="kpi-delta">Origin points</div>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <div class="table-header">
+      <div class="table-title">Lane SLA Matrix</div>
+      <div class="table-controls">
+        <input class="search-input" id="svc-search" type="text" placeholder="Search city, pincode…" oninput="filterServiceability()" style="width:200px">
+        <button class="export-btn" onclick="exportSvcCSV()">↓ Export</button>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead><tr>
+        <th>ORIGIN WH</th><th>ORIGIN PINCODE</th><th>DEST CITY</th>
+        <th>DEST PINCODE</th><th>REGION</th><th>CARRIER</th>
+        <th>SERVICE TYPE</th><th>CHANNEL</th>
+        <th>COMMITTED SLA</th><th>STANDARD DAYS</th><th>PRIORITY</th>
+      </tr></thead>
+      <tbody id="svc-tbody">
+        <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Loading serviceability data…</td></tr>
+      </tbody>
+    </table>
+    <div class="table-footer">
+      <span id="svc-table-info" class="page-info">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- USERS VIEW -->
+<div id="view-users" class="view-section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:18px">User Management</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Control who can view, upload, or administer Mosaic Move — Admin access only</div>
+    </div>
+    <button id="invite-user-btn" onclick="openInviteUserModal()" style="padding:9px 18px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-family:var(--font-head);font-weight:700;font-size:13px;cursor:pointer">+ Invite User</button>
+  </div>
+
+  <!-- Role legend -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid var(--failed);box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="font-family:var(--font-head);font-weight:700;font-size:14px;margin-bottom:6px">👑 Admin</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">Full access. Can add/remove users, modify partner MDM, consignees, serviceability. Can delete records. Currently: <strong>you only</strong>.</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="font-family:var(--font-head);font-weight:700;font-size:14px;margin-bottom:6px">📤 Ops Upload</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">Can upload warehouse base files and partner MIS. Can view all data. Cannot delete records or manage users. Assigned to: Shailendra, Nikhil.</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid var(--delivered);box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="font-family:var(--font-head);font-weight:700;font-size:14px;margin-bottom:6px">👁 Viewer</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">Read-only access. Can view dashboard, LR board, and all reports. Cannot upload files or modify any data. Assigned to: Manan, Vipul.</div>
+    </div>
+  </div>
+
+  <!-- Users table -->
+  <div class="table-section">
+    <table class="data-table">
+      <thead><tr>
+        <th>NAME</th><th>EMAIL</th><th>ROLE</th><th>DEPARTMENT</th>
+        <th>BRAND ACCESS</th><th>REPORTS TO</th><th>STATUS</th><th>LAST LOGIN</th><th></th>
+      </tr></thead>
+      <tbody id="users-tbody">
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Loading users…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- INVITE USER MODAL -->
+<div class="modal-overlay" id="invite-user-modal" onclick="if(event.target===this)closeInviteUserModal()">
+  <div class="modal" style="width:560px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Invite User to Mosaic Move</div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Only @mosaicwellness.in accounts can be invited</div>
+      </div>
+      <button class="modal-close" onclick="closeInviteUserModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="form-row"><label class="form-label">Full Name *</label><input class="form-input" id="inv-name" type="text" placeholder="e.g. Riya Kaul"></div>
+        <div class="form-row"><label class="form-label">Email * (@mosaicwellness.in)</label><input class="form-input" id="inv-email" type="email" placeholder="name@mosaicwellness.in"></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="form-row"><label class="form-label">Role *</label>
+          <select class="form-select" id="inv-role">
+            <option value="">— Select role —</option>
+            <option value="ops_upload">Ops Upload — Can upload MIS files</option>
+            <option value="viewer">Viewer — Read only</option>
+          </select>
+        </div>
+        <div class="form-row"><label class="form-label">Department</label><input class="form-input" id="inv-dept" type="text" placeholder="e.g. B2B Logistics"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:14px">
+        <label class="form-label">Brand Access</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label id="inv-brand-MM" onclick="toggleInvBrand('MM',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-MM">☐</span> MM</label>
+          <label id="inv-brand-BB" onclick="toggleInvBrand('BB',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-BB">☐</span> BB</label>
+          <label id="inv-brand-LJ" onclick="toggleInvBrand('LJ',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-LJ">☐</span> LJ</label>
+          <label id="inv-brand-RL" onclick="toggleInvBrand('RL',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-RL">☐</span> RL</label>
+          <label id="inv-brand-OWN" onclick="toggleInvBrand('OWN',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-OWN">☐</span> OWN</label>
+        </div>
+        <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3);margin-top:5px">Leave blank to grant access to all brands</div>
+      </div>
+      <div style="background:rgba(15,122,255,0.05);border:1px solid rgba(15,122,255,0.15);border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">
+        ℹ The user will sign in using their <strong>@mosaicwellness.in</strong> Google account. Their role and access take effect immediately on first login.
+      </div>
+      <button class="submit-btn" onclick="saveInviteUser()">Save &amp; Activate User →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONSIGNEE MASTER VIEW -->
+<div id="view-consignees" class="view-section">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:18px;color:var(--text)">Consignee Master</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Retailer &amp; customer database — linked to every LR shipment</div>
+    </div>
+    <button onclick="openAddConsigneeModal()" style="padding:9px 18px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-family:var(--font-head);font-weight:700;font-size:13px;cursor:pointer">+ Add Consignee</button>
+  </div>
+
+  <!-- KPI strip -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+    <div class="kpi-card" style="border-top:3px solid var(--accent3)">
+      <div class="kpi-label">Total Consignees</div>
+      <div class="kpi-value" id="ckpi-total" style="color:var(--accent3)">—</div>
+      <div class="kpi-delta">Across all channels</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--delivered)">
+      <div class="kpi-label">Modern Trade</div>
+      <div class="kpi-value" id="ckpi-mt" style="color:var(--delivered)">—</div>
+      <div class="kpi-delta">DMart, Reliance etc.</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--accent)">
+      <div class="kpi-label">Ecom / Qcom</div>
+      <div class="kpi-value" id="ckpi-ecom" style="color:var(--accent)">—</div>
+      <div class="kpi-delta">Amazon, Zepto etc.</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--attempted)">
+      <div class="kpi-label">Wholesale</div>
+      <div class="kpi-value" id="ckpi-wholesale" style="color:var(--attempted)">—</div>
+      <div class="kpi-delta">Metro, Costco etc.</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--pending)">
+      <div class="kpi-label">Appt. Required</div>
+      <div class="kpi-value" id="ckpi-appt" style="color:var(--pending)">—</div>
+      <div class="kpi-delta">Need slot booking</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:10px;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+    <input id="consignee-search" class="search-input" type="text" placeholder="Search name, city, code…" oninput="filterConsignees()" style="width:220px">
+    <select id="consignee-type-filter" class="filter-select" onchange="filterConsignees()">
+      <option value="">All Types</option>
+      <option>Modern Trade</option><option>Ecom Marketplace</option>
+      <option>Quick Commerce</option><option>General Trade</option>
+      <option>Wholesale</option><option>Pharmacy</option><option>Other</option>
+    </select>
+    <select id="consignee-channel-filter" class="filter-select" onchange="filterConsignees()">
+      <option value="">All Channels</option>
+      <option>Ecom/Qcom</option><option>Offline</option><option>Both</option>
+    </select>
+    <select id="consignee-region-filter" class="filter-select" onchange="filterConsignees()">
+      <option value="">All Regions</option>
+      <option>North</option><option>South</option><option>East</option>
+      <option>West</option><option>Central</option>
+    </select>
+    <div style="margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--text3)" id="consignee-count-label"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-section">
+    <table class="data-table">
+      <thead><tr>
+        <th>CONSIGNEE NAME</th><th>CODE</th><th>TYPE</th><th>CHANNEL</th>
+        <th>CITY</th><th>REGION</th><th>APPT</th><th>LEAD</th>
+        <th>SHIPMENTS</th><th>DEL. RATE</th><th>DELAYED</th><th>STATUS</th><th></th>
+      </tr></thead>
+      <tbody id="consignee-tbody">
+        <tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Sign in to load consignees</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ADD CONSIGNEE MODAL -->
+<div class="modal-overlay" id="consignee-modal" onclick="if(event.target===this)closeAddConsigneeModal()">
+  <div class="modal" style="width:640px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Add New Consignee</div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Build your retailer master — linked to all LR shipments</div>
+      </div>
+      <button class="modal-close" onclick="closeAddConsigneeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">Consignee Identity</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-row"><label class="form-label">Consignee Name *</label><input class="form-input" id="cn-name" type="text" placeholder="e.g. DMart Pune, Zepto Mumbai"></div>
+        <div class="form-row"><label class="form-label">Short Code</label><input class="form-input" id="cn-code" type="text" placeholder="e.g. DMT (3–5 chars)" maxlength="5"></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-row"><label class="form-label">Retailer Type *</label>
+          <select class="form-select" id="cn-type">
+            <option value="">— Select type —</option>
+            <option>Modern Trade</option><option>Ecom Marketplace</option>
+            <option>Quick Commerce</option><option>General Trade</option>
+            <option>Wholesale</option><option>Pharmacy</option><option>Other</option>
+          </select></div>
+        <div class="form-row"><label class="form-label">Channel *</label>
+          <select class="form-select" id="cn-channel">
+            <option value="">— Select —</option>
+            <option>Ecom/Qcom</option><option>Offline</option><option>Both</option>
+          </select></div>
+      </div>
+      <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-top:16px">Location</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-row"><label class="form-label">City</label><input class="form-input" id="cn-city" type="text" placeholder="e.g. Mumbai"></div>
+        <div class="form-row"><label class="form-label">State</label><input class="form-input" id="cn-state" type="text" placeholder="e.g. Maharashtra"></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-row"><label class="form-label">Region</label>
+          <select class="form-select" id="cn-region">
+            <option value="">— Select —</option>
+            <option>North</option><option>South</option><option>East</option><option>West</option><option>Central</option>
+          </select></div>
+        <div class="form-row"><label class="form-label">Pincode</label><input class="form-input" id="cn-pincode" type="text" placeholder="e.g. 400001"></div>
+      </div>
+      <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-top:16px">Delivery Preferences</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-row"><label class="form-label">Appointment Required?</label>
+          <select class="form-select" id="cn-appt-req">
+            <option value="false">No — Direct delivery</option>
+            <option value="true">Yes — Slot booking needed</option>
+          </select></div>
+        <div class="form-row"><label class="form-label">Standard Lead Days</label><input class="form-input" id="cn-lead" type="number" value="2" min="1" max="14"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px"><label class="form-label">Appointment Window</label><input class="form-input" id="cn-appt-window" type="text" placeholder="e.g. Mon–Fri 10am–4pm"></div>
+      <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-top:16px">Contact</div>
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-row"><label class="form-label">Contact Name</label><input class="form-input" id="cn-contact-name" type="text" placeholder="Inward manager name"></div>
+        <div class="form-row"><label class="form-label">Contact Phone</label><input class="form-input" id="cn-contact-phone" type="tel" placeholder="+91 98XXXXXXXX"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px"><label class="form-label">Special Instructions</label><input class="form-input" id="cn-instructions" type="text" placeholder="e.g. Gate 3 entry only, call before delivery"></div>
+      <button class="submit-btn" onclick="saveConsignee()">Save Consignee →</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="modal-overlay" id="lr-modal" onclick="if(event.target===this)closeModal()">
   <div class="modal">
@@ -1300,17 +1715,7 @@ let searchQ = '';
 let statusQ = '';
 let partnerDropQ = '';
 
-// ── LOAD ALL DATA ON INIT ──────────────────────────────
-async function loadAllData() {
-  showDbStatus('loading');
-  try {
-    await Promise.all([loadPartners(), loadShipments(), loadUploadHistory(), loadStats()]);
-    showDbStatus('live');
-  } catch(e) {
-    console.error('DB load error:', e);
-    showDbStatus('error');
-  }
-}
+// loadAllData defined below with consignee support
 
 async function loadPartners() {
   const { data, error } = await db.from('partners').select('*').eq('status','active').order('name');
@@ -1618,8 +2023,8 @@ function switchView(id, tabEl) {
   if (navTitles[id]) document.getElementById('page-title').textContent = navTitles[id];
 }
 
-const navMap    = { dashboard:0, lrboard:1, mis:2, timeline:3 };
-const navTitles = { dashboard:'Mosaic Move', lrboard:'LR Tracking', mis:'MIS Manager', timeline:'Shipment Timeline' };
+const navMap    = { dashboard:0, lrboard:1, mis:2, timeline:3, consignees:4, appointments:5, serviceability:6, users:7 };
+const navTitles = { dashboard:'Mosaic Move', lrboard:'LR Tracking', mis:'MIS Manager', timeline:'Shipment Timeline', consignees:'Consignee Master', appointments:'Appointment Tracker', serviceability:'Serviceability Master', users:'User Management' };
 
 function setNav(el, id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -2126,23 +2531,6 @@ async function mdmPartnerChanged(val) {
 let currentUserEmail = '';
 
 // After auth grants access, capture email and load live data
-function onAuthSuccess(user) {
-  currentUserEmail = user.email;
-  // Wait until Supabase SDK is available then load data
-  let attempts = 0;
-  const waitForSupabase = setInterval(() => {
-    attempts++;
-    if (initSupabase()) {
-      clearInterval(waitForSupabase);
-      loadAllData();
-      subscribeRealtime();
-    } else if (attempts > 20) {
-      clearInterval(waitForSupabase);
-      console.error('Supabase SDK failed to load after 2s');
-      showToast('⚠ Database connection failed — check your internet connection');
-    }
-  }, 100);
-}
 
 
 function getFiltered() {
@@ -2614,6 +3002,962 @@ function addUploadHistory(partner, filename) {
 
 // Auth functions moved to <head> script block
 
+
+// ══════════════════════════════════════════════════════
+// CONSIGNEE MASTER — Data Layer & UI
+// ══════════════════════════════════════════════════════
+let consignees      = [];          // full list from DB
+let filteredConsignees = [];       // after filters applied
+
+// Retailer type badge colours
+const TYPE_STYLES = {
+  'Modern Trade':     { bg:'rgba(16,185,129,0.08)',  color:'#059669' },
+  'Ecom Marketplace': { bg:'rgba(15,122,255,0.08)',  color:'#0f7aff' },
+  'Quick Commerce':   { bg:'rgba(139,92,246,0.08)',  color:'#7c3aed' },
+  'General Trade':    { bg:'rgba(245,158,11,0.08)',  color:'#d97706' },
+  'Wholesale':        { bg:'rgba(255,107,53,0.08)',  color:'#ff6b35' },
+  'Pharmacy':         { bg:'rgba(20,184,166,0.08)',  color:'#0d9488' },
+  'Other':            { bg:'rgba(156,163,175,0.08)', color:'#6b7280' },
+};
+
+// ── LOAD consignees from Supabase ──────────────────────
+async function loadConsignees() {
+  const { data, error } = await db
+    .from('consignee_performance_view')
+    .select('*')
+    .order('name');
+  if (error) { console.warn('Consignee load error:', error); return; }
+  consignees = data || [];
+  filteredConsignees = [...consignees];
+  renderConsigneeTable();
+  updateConsigneeKPIs();
+}
+
+// ── KPI CARDS ──────────────────────────────────────────
+function updateConsigneeKPIs() {
+  const total     = consignees.length;
+  const mt        = consignees.filter(c => c.retailer_type === 'Modern Trade').length;
+  const ecom      = consignees.filter(c => ['Ecom Marketplace','Quick Commerce'].includes(c.retailer_type)).length;
+  const wholesale = consignees.filter(c => c.retailer_type === 'Wholesale').length;
+  const appt      = consignees.filter(c => c.appointment_required).length;
+
+  const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  set('ckpi-total',    total);
+  set('ckpi-mt',       mt);
+  set('ckpi-ecom',     ecom);
+  set('ckpi-wholesale',wholesale);
+  set('ckpi-appt',     appt);
+}
+
+// ── FILTER ─────────────────────────────────────────────
+function filterConsignees() {
+  const q       = (document.getElementById('consignee-search')?.value || '').toLowerCase();
+  const type    = document.getElementById('consignee-type-filter')?.value || '';
+  const channel = document.getElementById('consignee-channel-filter')?.value || '';
+  const region  = document.getElementById('consignee-region-filter')?.value || '';
+
+  filteredConsignees = consignees.filter(c => {
+    const mq = !q || (c.name||'').toLowerCase().includes(q)
+                  || (c.city||'').toLowerCase().includes(q)
+                  || (c.short_code||'').toLowerCase().includes(q);
+    const mt = !type    || c.retailer_type === type;
+    const mc = !channel || c.channel === channel;
+    const mr = !region  || c.region === region;
+    return mq && mt && mc && mr;
+  });
+
+  renderConsigneeTable();
+  const lbl = document.getElementById('consignee-count-label');
+  if (lbl) lbl.textContent = `${filteredConsignees.length} of ${consignees.length} consignees`;
+}
+
+// ── RENDER TABLE ───────────────────────────────────────
+function renderConsigneeTable() {
+  const tbody = document.getElementById('consignee-tbody');
+  if (!tbody) return;
+
+  if (filteredConsignees.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${consignees.length === 0
+        ? '⬆ No consignees yet — click "+ Add Consignee" to build your retailer master'
+        : '🔍 No consignees match the current filters'}
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filteredConsignees.map(c => {
+    const ts  = TYPE_STYLES[c.retailer_type] || TYPE_STYLES['Other'];
+    const dr  = c.delivery_rate_pct != null ? `${c.delivery_rate_pct}%` : '—';
+    const drColor = c.delivery_rate_pct >= 80 ? 'var(--delivered)'
+                  : c.delivery_rate_pct >= 60 ? 'var(--pending)'
+                  : c.delivery_rate_pct != null ? 'var(--failed)' : 'var(--text3)';
+    const apptBadge = c.appointment_required
+      ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(245,158,11,0.1);color:var(--pending);padding:2px 7px;border-radius:4px">YES</span>`
+      : `<span style="font-size:9px;font-family:var(--font-mono);background:var(--surface2);color:var(--text3);padding:2px 7px;border-radius:4px">NO</span>`;
+    const statusBadge = c.is_active !== false
+      ? `<span class="status-pill s-delivered">Active</span>`
+      : `<span class="status-pill s-delayed">Inactive</span>`;
+
+    return `<tr>
+      <td style="font-weight:600;color:var(--text)">${c.name}</td>
+      <td><span style="font-family:var(--font-mono);font-size:10px;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--text2)">${c.short_code || '—'}</span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:5px;background:${ts.bg};color:${ts.color};font-weight:600">${c.retailer_type}</span></td>
+      <td><span class="channel-tag">${c.channel}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${c.city || '—'}</td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);color:var(--text3)">${c.region || '—'}</span></td>
+      <td>${apptBadge}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:center">${c.delivery_lead_days || '—'}d</td>
+      <td style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);text-align:center">${(c.total_shipments || 0).toLocaleString()}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${drColor};text-align:center">${dr}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--delayed);text-align:center">${c.delayed || 0}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <button class="action-btn" onclick="editConsignee('${c.id}')">Edit</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const lbl = document.getElementById('consignee-count-label');
+  if (lbl) lbl.textContent = `${filteredConsignees.length} of ${consignees.length} consignees`;
+}
+
+// ── ADD CONSIGNEE MODAL ────────────────────────────────
+function openAddConsigneeModal() {
+  ['cn-name','cn-code','cn-city','cn-state','cn-pincode',
+   'cn-appt-window','cn-contact-name','cn-contact-phone','cn-instructions']
+    .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  ['cn-type','cn-channel','cn-region'].forEach(id => {
+    const e = document.getElementById(id); if(e) e.value = '';
+  });
+  const ld = document.getElementById('cn-lead'); if(ld) ld.value = '2';
+  const ar = document.getElementById('cn-appt-req'); if(ar) ar.value = 'false';
+  document.getElementById('consignee-modal')?.classList.add('open');
+}
+
+function closeAddConsigneeModal() {
+  document.getElementById('consignee-modal')?.classList.remove('open');
+}
+
+async function saveConsignee() {
+  const name    = document.getElementById('cn-name')?.value?.trim();
+  const type    = document.getElementById('cn-type')?.value;
+  const channel = document.getElementById('cn-channel')?.value;
+
+  if (!name)    { showToast('⚠ Consignee name is required'); return; }
+  if (!type)    { showToast('⚠ Please select retailer type'); return; }
+  if (!channel) { showToast('⚠ Please select channel'); return; }
+
+  const payload = {
+    name,
+    short_code:           document.getElementById('cn-code')?.value?.trim()?.toUpperCase() || null,
+    retailer_type:        type,
+    channel,
+    city:                 document.getElementById('cn-city')?.value?.trim()     || null,
+    state:                document.getElementById('cn-state')?.value?.trim()    || null,
+    region:               document.getElementById('cn-region')?.value           || null,
+    pincode:              document.getElementById('cn-pincode')?.value?.trim()  || null,
+    appointment_required: document.getElementById('cn-appt-req')?.value === 'true',
+    appointment_window:   document.getElementById('cn-appt-window')?.value?.trim() || null,
+    delivery_lead_days:   parseInt(document.getElementById('cn-lead')?.value) || 2,
+    contact_name:         document.getElementById('cn-contact-name')?.value?.trim()  || null,
+    contact_phone:        document.getElementById('cn-contact-phone')?.value?.trim() || null,
+    special_instructions: document.getElementById('cn-instructions')?.value?.trim()  || null,
+    created_by:           currentUserEmail || 'unknown',
+    is_active:            true,
+  };
+
+  const { error } = await db.from('consignees').insert(payload);
+  if (error) {
+    if (error.code === '23505') {
+      showToast('⚠ A consignee with this name already exists');
+    } else {
+      showToast('✗ Error saving: ' + error.message);
+    }
+    return;
+  }
+
+  closeAddConsigneeModal();
+  showToast(`✓ ${name} added to Consignee Master`);
+  await loadConsignees();
+}
+
+async function editConsignee(id) {
+  // For now show a toast — full edit modal is v2
+  showToast('Edit functionality coming in next update');
+}
+
+// ── AUTO-MATCH consignee name when uploading shipments ─
+// Called from uploadWarehouseFile after inserting shipments
+async function matchConsigneesToShipments() {
+  // Get all unlinked shipments (consignee_id is null)
+  const { data: unlinked } = await db
+    .from('shipments')
+    .select('lr_number, consignee')
+    .is('consignee_id', null);
+
+  if (!unlinked || unlinked.length === 0) return;
+
+  // Get consignee master
+  const { data: masterList } = await db
+    .from('consignees')
+    .select('id, name');
+
+  if (!masterList || masterList.length === 0) return;
+
+  // Match by name similarity (case-insensitive, partial)
+  for (const shipment of unlinked) {
+    const rawName = (shipment.consignee || '').toLowerCase().trim();
+    const match = masterList.find(c =>
+      rawName.includes(c.name.toLowerCase()) ||
+      c.name.toLowerCase().includes(rawName)
+    );
+    if (match) {
+      await db.from('shipments')
+        .update({ consignee_id: match.id })
+        .eq('lr_number', shipment.lr_number);
+    }
+  }
+}
+
+// ── HOOK into loadAllData ──────────────────────────────
+const _origLoadAllData = loadAllData;
+
+// ══════════════════════════════════════════════════════
+// APPOINTMENT TRACKER — Data Layer & UI
+// ══════════════════════════════════════════════════════
+
+let apptShipments = [];       // all shipments with appt_date
+let apptWeekStart = null;     // current week start date for dashboard strip
+
+// ── LOAD appointments from Supabase ───────────────────
+async function loadAppointments() {
+  const { data, error } = await db
+    .from('shipment_status_view')
+    .select('lr_number,partner_name,partner_color,consignee,channel,warehouse,dispatch_date,appt_date,delivery_status,actual_delivery')
+    .not('appt_date', 'is', null)
+    .order('appt_date', { ascending: true });
+  if (error) { console.warn('Appt load error:', error); return; }
+  apptShipments = data || [];
+  renderApptDashboardStrip();
+  renderApptView();
+  updateApptKPIs();
+  populateApptPartnerFilter();
+}
+
+// ── DATE HELPERS ───────────────────────────────────────
+function toDateStr(d) {
+  if (!d) return null;
+  return new Date(d).toISOString().slice(0, 10);
+}
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function daysBetween(a, b) {
+  // a and b are YYYY-MM-DD strings
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+function fmtShort(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+}
+function dayLabel(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { weekday:'short' });
+}
+
+// ── APPT STATUS LOGIC ─────────────────────────────────
+function apptStatus(row) {
+  const today  = todayStr();
+  const appt   = toDateStr(row.appt_date);
+  const status = row.delivery_status;
+  if (!appt) return null;
+  if (status === 'Delivered') return { label:'Delivered', cls:'s-delivered', color:'var(--delivered)' };
+  if (appt === today)         return { label:'Today',     cls:'s-transit',   color:'var(--intransit)' };
+  if (appt > today)           return { label:'Upcoming',  cls:'s-pending',   color:'var(--pending)'   };
+  // appt is in the past and not delivered
+  return { label:'Missed', cls:'s-failed', color:'var(--failed)' };
+}
+
+function daysToApptLabel(appt) {
+  const today = todayStr();
+  const diff  = daysBetween(today, appt);
+  if (diff === 0)  return { text:'Today',          color:'var(--intransit)', bold:true };
+  if (diff === 1)  return { text:'Tomorrow',        color:'var(--pending)',   bold:true };
+  if (diff > 1)    return { text:`In ${diff}d`,     color:'var(--text2)',     bold:false };
+  if (diff === -1) return { text:'Yesterday',       color:'var(--delayed)',   bold:true };
+  return { text:`${Math.abs(diff)}d overdue`, color:'var(--failed)', bold:true };
+}
+
+// ── KPI CARDS ──────────────────────────────────────────
+function updateApptKPIs() {
+  const today    = todayStr();
+  const in7      = addDays(today, 7);
+  const total    = apptShipments.length;
+  const todayAp  = apptShipments.filter(r => toDateStr(r.appt_date) === today).length;
+  const upcoming = apptShipments.filter(r => {
+    const a = toDateStr(r.appt_date);
+    return a > today && a <= in7 && r.delivery_status !== 'Delivered';
+  }).length;
+  const missed   = apptShipments.filter(r => {
+    const a = toDateStr(r.appt_date);
+    return a < today && r.delivery_status !== 'Delivered';
+  }).length;
+
+  const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  set('akpi-total',    total);
+  set('akpi-today',    todayAp);
+  set('akpi-upcoming', upcoming);
+  set('akpi-missed',   missed);
+}
+
+// ── CARRIER BREAKDOWN CARDS ────────────────────────────
+function renderApptCarrierBreakdown() {
+  const el = document.getElementById('appt-carrier-breakdown');
+  if (!el) return;
+  const today = todayStr();
+
+  // Group by partner
+  const byPartner = {};
+  apptShipments.forEach(r => {
+    const p = r.partner_name || 'Unknown';
+    if (!byPartner[p]) byPartner[p] = { color: r.partner_color || '#6c47ff', total:0, today:0, upcoming:0, missed:0, delivered:0 };
+    byPartner[p].total++;
+    const a = toDateStr(r.appt_date);
+    const s = r.delivery_status;
+    if (s === 'Delivered')  byPartner[p].delivered++;
+    else if (a === today)   byPartner[p].today++;
+    else if (a > today)     byPartner[p].upcoming++;
+    else                    byPartner[p].missed++;
+  });
+
+  el.innerHTML = Object.entries(byPartner).map(([name, d]) => `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${d.color}"></div>
+        <div style="font-family:var(--font-head);font-weight:700;font-size:14px;color:${d.color}">${name}</div>
+        <div style="margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--text3)">${d.total} appts</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="text-align:center;background:rgba(15,122,255,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--intransit)">${d.today}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">TODAY</div>
+        </div>
+        <div style="text-align:center;background:rgba(245,158,11,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--pending)">${d.upcoming}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">UPCOMING</div>
+        </div>
+        <div style="text-align:center;background:rgba(239,68,68,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--failed)">${d.missed}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">MISSED</div>
+        </div>
+        <div style="text-align:center;background:rgba(16,185,129,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--delivered)">${d.delivered}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">DONE</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── POPULATE PARTNER FILTER IN APPT VIEW ──────────────
+function populateApptPartnerFilter() {
+  const sel = document.getElementById('appt-partner-filter');
+  if (!sel) return;
+  const existing = new Set([...sel.options].map(o => o.value));
+  const names = [...new Set(apptShipments.map(r => r.partner_name).filter(Boolean))].sort();
+  names.forEach(n => {
+    if (!existing.has(n)) {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      sel.appendChild(opt);
+    }
+  });
+}
+
+// ── MAIN APPT TABLE RENDER ────────────────────────────
+function renderApptView() {
+  renderApptCarrierBreakdown();
+  const tbody = document.getElementById('appt-tbody');
+  const info  = document.getElementById('appt-table-info');
+  if (!tbody) return;
+
+  const partnerF = document.getElementById('appt-partner-filter')?.value || '';
+  const statusF  = document.getElementById('appt-status-filter')?.value  || '';
+  const searchQ  = (document.getElementById('appt-search')?.value || '').toLowerCase();
+  const today    = todayStr();
+  const in7      = addDays(today, 7);
+
+  let filtered = apptShipments.filter(r => {
+    const appt = toDateStr(r.appt_date);
+    const as   = apptStatus(r);
+
+    const mp = !partnerF || r.partner_name === partnerF;
+    const mq = !searchQ  || (r.lr_number||'').toLowerCase().includes(searchQ)
+                          || (r.consignee||'').toLowerCase().includes(searchQ);
+    let ms = true;
+    if (statusF === 'today')     ms = appt === today && r.delivery_status !== 'Delivered';
+    if (statusF === 'upcoming')  ms = appt > today && appt <= in7 && r.delivery_status !== 'Delivered';
+    if (statusF === 'missed')    ms = appt < today && r.delivery_status !== 'Delivered';
+    if (statusF === 'delivered') ms = r.delivery_status === 'Delivered';
+    return mp && mq && ms;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${apptShipments.length === 0
+        ? '⬆ No appointment dates found — upload a warehouse base file with appointment dates'
+        : '🔍 No LRs match the current filters'}
+    </td></tr>`;
+    if (info) info.textContent = '0 results';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const appt     = toDateStr(r.appt_date);
+    const as_      = apptStatus(r);
+    const dtl      = daysToApptLabel(appt);
+    const pColor   = r.partner_color || '#6c47ff';
+    const isToday  = appt === today;
+    const isMissed = appt < today && r.delivery_status !== 'Delivered';
+
+    return `<tr style="${isToday ? 'background:rgba(15,122,255,0.03)' : isMissed ? 'background:rgba(239,68,68,0.02)' : ''}">
+      <td><span class="lr-code">${r.lr_number}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);font-weight:600;padding:3px 8px;border-radius:5px;background:${pColor}15;color:${pColor}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${pColor};display:inline-block"></span>${r.partner_name || '—'}
+      </span></td>
+      <td style="font-weight:500;color:var(--text)">${r.consignee || '—'}</td>
+      <td><span class="channel-tag">${r.channel || '—'}</span></td>
+      <td><span class="channel-tag">${r.warehouse || '—'}</span></td>
+      <td><span class="date-cell">${fmtDate(r.dispatch_date)}</span></td>
+      <td>
+        <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${isToday ? 'var(--intransit)' : isMissed ? 'var(--failed)' : 'var(--text)'}">
+          ${fmtShort(appt)}
+        </span>
+      </td>
+      <td>
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:${dtl.bold?'700':'400'};color:${dtl.color}">
+          ${dtl.text}
+        </span>
+      </td>
+      <td><span class="status-pill ${statusClass(r.delivery_status)}">${r.delivery_status}</span></td>
+      <td><span class="status-pill ${as_?.cls || 's-pending'}">${as_?.label || '—'}</span></td>
+    </tr>`;
+  }).join('');
+
+  if (info) info.textContent = `${filtered.length} appointment${filtered.length !== 1 ? 's' : ''}`;
+}
+
+// ── EXPORT APPT CSV ────────────────────────────────────
+function exportApptCSV() {
+  const rows = apptShipments.map(r => [
+    r.lr_number, r.partner_name, r.consignee, r.channel,
+    r.warehouse, r.dispatch_date, r.appt_date, r.delivery_status
+  ]);
+  const h = ['LR Number','Carrier','Consignee','Channel','Warehouse','Dispatch Date','Appointment Date','Status'];
+  const csv = [h, ...rows].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'MosaicMove_Appointments.csv';
+  a.click();
+  showToast('Appointments exported ✓');
+}
+
+// ══════════════════════════════════════════════════════
+// DASHBOARD APPOINTMENT STRIP — 7-day week view
+// ══════════════════════════════════════════════════════
+
+let apptSelectedDay = null;
+
+function apptGoToday() {
+  apptWeekStart = getWeekStart(todayStr());
+  apptSelectedDay = todayStr();
+  renderApptDashboardStrip();
+}
+
+function apptChangePeriod(days) {
+  if (!apptWeekStart) apptWeekStart = getWeekStart(todayStr());
+  apptWeekStart = addDays(apptWeekStart, days);
+  renderApptDashboardStrip();
+}
+
+function getWeekStart(dateStr) {
+  // Start week on Monday
+  const d = new Date(dateStr);
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function renderApptDashboardStrip() {
+  if (!apptWeekStart) apptWeekStart = getWeekStart(todayStr());
+  if (!apptSelectedDay) apptSelectedDay = todayStr();
+
+  const today   = todayStr();
+  const weekEnd = addDays(apptWeekStart, 6);
+
+  // Update period label
+  const lbl = document.getElementById('appt-period-label');
+  if (lbl) lbl.textContent = `${fmtShort(apptWeekStart)} — ${fmtShort(weekEnd)}`;
+
+  // Build 7 day columns
+  const grid = document.getElementById('appt-week-grid');
+  if (!grid) return;
+
+  const days = Array.from({length:7}, (_, i) => addDays(apptWeekStart, i));
+
+  grid.innerHTML = days.map(day => {
+    const dayAppts = apptShipments.filter(r => toDateStr(r.appt_date) === day);
+    const missed   = dayAppts.filter(r => day < today && r.delivery_status !== 'Delivered').length;
+    const done     = dayAppts.filter(r => r.delivery_status === 'Delivered').length;
+    const pending  = dayAppts.length - missed - done;
+    const isToday  = day === today;
+    const isSelected = day === apptSelectedDay;
+
+    // Count by carrier for mini dots
+    const carriers = {};
+    dayAppts.forEach(r => {
+      if (r.partner_name) {
+        carriers[r.partner_name] = carriers[r.partner_name] || { color: r.partner_color||'#6c47ff', count:0 };
+        carriers[r.partner_name].count++;
+      }
+    });
+
+    return `
+      <div onclick="selectApptDay('${day}')"
+        style="padding:12px 10px;border-right:1px solid var(--border);cursor:pointer;transition:background .15s;
+               background:${isSelected ? 'rgba(15,122,255,0.06)' : isToday ? 'rgba(15,122,255,0.02)' : '#fff'};
+               border-bottom:${isSelected ? '3px solid var(--accent)' : '3px solid transparent'}"
+        onmouseover="this.style.background='rgba(15,122,255,0.04)'"
+        onmouseout="this.style.background='${isSelected ? 'rgba(15,122,255,0.06)' : isToday ? 'rgba(15,122,255,0.02)' : '#fff'}'">
+        <div style="font-size:9px;font-family:var(--font-mono);color:${isToday?'var(--accent)':'var(--text3)'};letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">${dayLabel(day)}</div>
+        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:${isToday?'var(--accent)':'var(--text)'};margin-bottom:8px">${new Date(day).getDate()}</div>
+        ${dayAppts.length === 0
+          ? `<div style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">No appts</div>`
+          : `
+            <div style="font-size:18px;font-family:var(--font-head);font-weight:800;color:${missed>0?'var(--failed)':done===dayAppts.length?'var(--delivered)':'var(--text)'};margin-bottom:4px">${dayAppts.length}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">
+              ${done    > 0 ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(16,185,129,0.1);color:var(--delivered);padding:1px 5px;border-radius:3px">${done}✓</span>` : ''}
+              ${pending > 0 ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(245,158,11,0.1);color:var(--pending);padding:1px 5px;border-radius:3px">${pending}⏳</span>` : ''}
+              ${missed  > 0 ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(239,68,68,0.1);color:var(--failed);padding:1px 5px;border-radius:3px">${missed}!</span>` : ''}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              ${Object.entries(carriers).map(([n,d]) =>
+                `<span title="${n}: ${d.count}" style="width:8px;height:8px;border-radius:50%;background:${d.color};display:inline-block"></span>`
+              ).join('')}
+            </div>`
+        }
+      </div>`;
+  }).join('');
+
+  // Render the selected day detail
+  renderApptDayDetail(apptSelectedDay);
+}
+
+function selectApptDay(day) {
+  apptSelectedDay = day;
+  renderApptDashboardStrip();
+}
+
+function renderApptDayDetail(day) {
+  const el = document.getElementById('appt-day-detail');
+  if (!el) return;
+
+  const today  = todayStr();
+  const dayLRs = apptShipments.filter(r => toDateStr(r.appt_date) === day);
+
+  if (dayLRs.length === 0) {
+    el.innerHTML = `<div style="padding:20px 20px;font-size:12px;font-family:var(--font-mono);color:var(--text3);text-align:center">No appointments scheduled for ${fmtShort(day)}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="padding:12px 20px 0;font-size:11px;font-family:var(--font-mono);font-weight:600;color:var(--text);border-top:1px solid var(--border)">
+      ${dayLRs.length} appointment${dayLRs.length>1?'s':''} on ${fmtShort(day)}${day===today?' — TODAY':''}
+    </div>
+    <table class="data-table" style="margin-top:0">
+      <thead><tr>
+        <th>LR NUMBER</th><th>CARRIER</th><th>CONSIGNEE</th>
+        <th>CHANNEL</th><th>WAREHOUSE</th><th>DISPATCH</th>
+        <th>DELIVERY STATUS</th><th>APPT STATUS</th>
+      </tr></thead>
+      <tbody>
+        ${dayLRs.map(r => {
+          const as_ = apptStatus(r);
+          const pColor = r.partner_color || '#6c47ff';
+          const isMissed = day < today && r.delivery_status !== 'Delivered';
+          return `<tr style="${day===today?'background:rgba(15,122,255,0.025)':isMissed?'background:rgba(239,68,68,0.02)':''}">
+            <td><span class="lr-code">${r.lr_number}</span></td>
+            <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);font-weight:600;padding:3px 8px;border-radius:5px;background:${pColor}15;color:${pColor}">
+              <span style="width:6px;height:6px;border-radius:50%;background:${pColor};display:inline-block"></span>${r.partner_name||'—'}
+            </span></td>
+            <td style="font-weight:500;color:var(--text)">${r.consignee||'—'}</td>
+            <td><span class="channel-tag">${r.channel||'—'}</span></td>
+            <td><span class="channel-tag">${r.warehouse||'—'}</span></td>
+            <td><span class="date-cell">${fmtDate(r.dispatch_date)}</span></td>
+            <td><span class="status-pill ${statusClass(r.delivery_status)}">${r.delivery_status}</span></td>
+            <td><span class="status-pill ${as_?.cls||'s-pending'}" style="font-weight:700">${as_?.label||'—'}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// Hook loadAppointments into loadAllData
+
+// ══════════════════════════════════════════════════════
+// BRAND FILTER
+// ══════════════════════════════════════════════════════
+let activeBrand = 'all';
+
+function setBrand(btn, brand) {
+  document.querySelectorAll('#brand-toggle .ch-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeBrand = brand;
+  resetPage();
+  renderTable();
+  // Update KPIs if on dashboard
+  if (activeBrand !== 'all' && db) {
+    db.rpc('get_brand_stats', { p_brand: brand === 'all' ? null : brand })
+      .then(({ data }) => { if (data) { dbStats = data; updateKpiCards(); updateTrioCards(); } });
+  } else if (db) {
+    loadStats();
+  }
+}
+
+// Update getFiltered to include brand
+const _origGetFiltered = getFiltered;
+function getFiltered() {
+  return _origGetFiltered().filter(r =>
+    activeBrand === 'all' || !r.brand || r.brand === activeBrand || r.brand === 'All'
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// SERVICEABILITY MASTER
+// ══════════════════════════════════════════════════════
+let svcLanes    = [];
+let svcFiltered = [];
+
+async function loadServiceability() {
+  const { data, error } = await db
+    .from('serviceability')
+    .select('*, partners(name,color)')
+    .eq('is_active', true)
+    .order('origin_warehouse')
+    .order('committed_days');
+  if (error) { console.warn('Serviceability load error:', error); return; }
+  svcLanes    = data || [];
+  svcFiltered = [...svcLanes];
+  renderServiceabilityTable();
+  updateSvcKPIs();
+  populateSvcPartnerFilter();
+}
+
+function updateSvcKPIs() {
+  const total      = svcLanes.length;
+  const avgSLA     = total > 0
+    ? (svcLanes.reduce((s, r) => s + (r.committed_days || 0), 0) / total).toFixed(1)
+    : '—';
+  const carriers   = new Set(svcLanes.map(r => r.partner_name || r.partners?.name)).size;
+  const warehouses = new Set(svcLanes.map(r => r.origin_warehouse)).size;
+
+  const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  set('skpi-total',      total);
+  set('skpi-avg',        avgSLA + 'd');
+  set('skpi-carriers',   carriers);
+  set('skpi-warehouses', warehouses);
+}
+
+function populateSvcPartnerFilter() {
+  const sel = document.getElementById('svc-partner-filter');
+  if (!sel) return;
+  const names = [...new Set(svcLanes.map(r => r.partner_name || r.partners?.name).filter(Boolean))].sort();
+  names.forEach(n => {
+    if (![...sel.options].find(o => o.value === n)) {
+      const opt = document.createElement('option'); opt.value = n; opt.textContent = n;
+      sel.appendChild(opt);
+    }
+  });
+}
+
+function filterServiceability() {
+  const wh     = document.getElementById('svc-warehouse-filter')?.value || '';
+  const pf     = document.getElementById('svc-partner-filter')?.value   || '';
+  const rf     = document.getElementById('svc-region-filter')?.value    || '';
+  const q      = (document.getElementById('svc-search')?.value || '').toLowerCase();
+
+  svcFiltered = svcLanes.filter(r => {
+    const pName = r.partner_name || r.partners?.name || '';
+    const mw = !wh || r.origin_warehouse === wh;
+    const mp = !pf || pName === pf;
+    const mr = !rf || r.dest_region === rf;
+    const mq = !q  || (r.origin_pincode||'').includes(q)
+                    || (r.dest_city||'').toLowerCase().includes(q)
+                    || (r.dest_pincode||'').includes(q)
+                    || (r.origin_city||'').toLowerCase().includes(q);
+    return mw && mp && mr && mq;
+  });
+  renderServiceabilityTable();
+}
+
+const PRIORITY_STYLE = {
+  P0: { bg:'rgba(239,68,68,0.1)',   color:'var(--failed)',    label:'P0 — Critical' },
+  P1: { bg:'rgba(15,122,255,0.1)',  color:'var(--accent)',    label:'P1 — Standard' },
+  P2: { bg:'rgba(245,158,11,0.1)', color:'var(--pending)',   label:'P2 — Normal'   },
+  P3: { bg:'rgba(156,163,175,0.1)',color:'var(--text3)',     label:'P3 — Low'      },
+};
+
+const SVC_TYPE_STYLE = {
+  FTL:      { bg:'rgba(108,71,255,0.08)',  color:'#6c47ff' },
+  PTL:      { bg:'rgba(255,107,53,0.08)',  color:'#ff6b35' },
+  Express:  { bg:'rgba(239,68,68,0.08)',   color:'var(--failed)' },
+  Standard: { bg:'rgba(16,185,129,0.08)',  color:'var(--delivered)' },
+};
+
+function renderServiceabilityTable() {
+  const tbody = document.getElementById('svc-tbody');
+  const info  = document.getElementById('svc-table-info');
+  if (!tbody) return;
+
+  if (svcFiltered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${svcLanes.length === 0 ? '⬆ Run the v2 SQL schema to load serviceability lanes' : '🔍 No lanes match filters'}
+    </td></tr>`;
+    if (info) info.textContent = '0 lanes';
+    return;
+  }
+
+  tbody.innerHTML = svcFiltered.map(r => {
+    const pName  = r.partner_name || r.partners?.name || '—';
+    const pColor = r.partners?.color || '#6c47ff';
+    const ps     = PRIORITY_STYLE[r.priority]  || PRIORITY_STYLE.P1;
+    const ts     = SVC_TYPE_STYLE[r.service_type] || SVC_TYPE_STYLE.Standard;
+    const slaColor = r.committed_days <= 2 ? 'var(--delivered)'
+                   : r.committed_days <= 4 ? 'var(--pending)' : 'var(--delayed)';
+
+    return `<tr>
+      <td><span style="font-family:var(--font-mono);font-size:11px;font-weight:700;background:rgba(15,122,255,0.07);color:var(--accent);padding:3px 8px;border-radius:5px">${r.origin_warehouse||'—'}</span></td>
+      <td><span class="date-cell">${r.origin_pincode}</span></td>
+      <td style="font-weight:600;color:var(--text)">${r.dest_city||'—'}</td>
+      <td><span class="date-cell">${r.dest_pincode||'—'}</span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);color:var(--text3)">${r.dest_region||'—'}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);font-weight:600;padding:3px 8px;border-radius:5px;background:${pColor}15;color:${pColor}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${pColor};display:inline-block"></span>${pName}
+      </span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:5px;font-weight:600;background:${ts.bg};color:${ts.color}">${r.service_type}</span></td>
+      <td><span class="channel-tag">${r.channel||'—'}</span></td>
+      <td style="text-align:center"><span style="font-family:var(--font-head);font-weight:800;font-size:16px;color:${slaColor}">${r.committed_days}d</span></td>
+      <td style="text-align:center"><span style="font-family:var(--font-mono);font-size:12px;color:var(--text2)">${r.standard_days||'—'}d</span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:5px;background:${ps.bg};color:${ps.color};font-weight:600">${r.priority}</span></td>
+    </tr>`;
+  }).join('');
+
+  if (info) info.textContent = `${svcFiltered.length} lane${svcFiltered.length !== 1 ? 's' : ''}`;
+}
+
+function exportSvcCSV() {
+  const h = ['Origin WH','Origin Pincode','Dest City','Dest Pincode','Region','Carrier','Service Type','Channel','Committed Days','Standard Days','Priority'];
+  const rows = svcFiltered.map(r => [
+    r.origin_warehouse, r.origin_pincode, r.dest_city, r.dest_pincode, r.dest_region,
+    r.partner_name || r.partners?.name, r.service_type, r.channel,
+    r.committed_days, r.standard_days, r.priority
+  ]);
+  const csv = [h, ...rows].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'MosaicMove_Serviceability.csv'; a.click();
+  showToast('Serviceability matrix exported ✓');
+}
+
+// ══════════════════════════════════════════════════════
+// USER MANAGEMENT
+// ══════════════════════════════════════════════════════
+let usersList = [];
+let currentUserRole = 'viewer'; // updated after login
+
+const ROLE_STYLE = {
+  admin:      { bg:'rgba(239,68,68,0.1)',  color:'var(--failed)',    label:'Admin'      },
+  ops_upload: { bg:'rgba(15,122,255,0.1)', color:'var(--accent)',    label:'Ops Upload' },
+  viewer:     { bg:'rgba(16,185,129,0.1)', color:'var(--delivered)', label:'Viewer'     },
+};
+
+async function loadUsers() {
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .order('role')
+    .order('name');
+  if (error) { console.warn('Users load error:', error); return; }
+  usersList = data || [];
+
+  // Set current user role
+  const me = usersList.find(u => u.email === currentUserEmail);
+  if (me) {
+    currentUserRole = me.role;
+    // Show/hide invite button based on role
+    const invBtn = document.getElementById('invite-user-btn');
+    if (invBtn) invBtn.style.display = me.role === 'admin' ? 'block' : 'none';
+  }
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('users-tbody');
+  if (!tbody) return;
+
+  if (usersList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">No users found — run v2 SQL schema to seed users</td></tr>`;
+    return;
+  }
+
+  const isAdmin = currentUserRole === 'admin';
+  tbody.innerHTML = usersList.map(u => {
+    const rs    = ROLE_STYLE[u.role] || ROLE_STYLE.viewer;
+    const isMe  = u.email === currentUserEmail;
+    const brands = (u.brands || []).join(', ') || 'All';
+    const lastLogin = u.last_login ? fmtDate(u.last_login) : 'Never';
+
+    return `<tr style="${isMe ? 'background:rgba(15,122,255,0.03)' : ''}">
+      <td style="font-weight:${isMe?'700':'500'};color:var(--text)">${u.name}${isMe?' <span style="font-size:9px;font-family:var(--font-mono);background:rgba(15,122,255,0.1);color:var(--accent);padding:2px 6px;border-radius:4px;margin-left:4px">YOU</span>':''}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2)">${u.email}</td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 9px;border-radius:5px;font-weight:700;background:${rs.bg};color:${rs.color}">${rs.label}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${u.department || '—'}</td>
+      <td style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">${brands}</td>
+      <td style="font-size:11px;color:var(--text3)">${u.reporting_to || '—'}</td>
+      <td><span class="status-pill ${u.is_active ? 's-delivered' : 's-delayed'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text3)">${lastLogin}</td>
+      <td>
+        ${isAdmin && !isMe
+          ? `<button class="action-btn" onclick="toggleUserActive('${u.id}','${u.email}',${u.is_active})">${u.is_active ? 'Deactivate' : 'Activate'}</button>`
+          : '—'
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleUserActive(id, email, currentActive) {
+  if (currentUserRole !== 'admin') { showToast('⚠ Admin access required'); return; }
+  const { error } = await db.from('users').update({ is_active: !currentActive }).eq('id', id);
+  if (error) { showToast('✗ Error: ' + error.message); return; }
+  showToast(`${email} ${!currentActive ? 'activated' : 'deactivated'} ✓`);
+  await loadUsers();
+}
+
+// Invite user modal
+const invBrands = new Set();
+
+function openInviteUserModal() {
+  if (currentUserRole !== 'admin') { showToast('⚠ Only admins can invite users'); return; }
+  ['inv-name','inv-email','inv-dept'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  const r = document.getElementById('inv-role'); if(r) r.value = '';
+  invBrands.clear();
+  ['MM','BB','LJ','RL','OWN'].forEach(b => {
+    const chk = document.getElementById('inv-bchk-'+b);
+    const lbl = document.getElementById('inv-brand-'+b);
+    if(chk) chk.textContent = '☐';
+    if(lbl) { lbl.style.borderColor = 'var(--border)'; lbl.style.color = 'var(--text2)'; lbl.style.background = ''; }
+  });
+  document.getElementById('invite-user-modal')?.classList.add('open');
+}
+
+function closeInviteUserModal() {
+  document.getElementById('invite-user-modal')?.classList.remove('open');
+}
+
+function toggleInvBrand(brand, el) {
+  const chk = document.getElementById('inv-bchk-'+brand);
+  if (invBrands.has(brand)) {
+    invBrands.delete(brand);
+    if(chk) chk.textContent = '☐';
+    el.style.borderColor = 'var(--border)'; el.style.color = 'var(--text2)'; el.style.background = '';
+  } else {
+    invBrands.add(brand);
+    if(chk) chk.textContent = '☑';
+    el.style.borderColor = 'var(--accent)'; el.style.color = 'var(--accent)'; el.style.background = 'rgba(15,122,255,0.05)';
+  }
+}
+
+async function saveInviteUser() {
+  if (currentUserRole !== 'admin') { showToast('⚠ Admin access required'); return; }
+  const name  = document.getElementById('inv-name')?.value?.trim();
+  const email = document.getElementById('inv-email')?.value?.trim().toLowerCase();
+  const role  = document.getElementById('inv-role')?.value;
+  const dept  = document.getElementById('inv-dept')?.value?.trim();
+
+  if (!name)  { showToast('⚠ Name is required'); return; }
+  if (!email) { showToast('⚠ Email is required'); return; }
+  if (!email.endsWith('@mosaicwellness.in')) { showToast('⚠ Must be @mosaicwellness.in account'); return; }
+  if (!role)  { showToast('⚠ Please select a role'); return; }
+
+  const brands = invBrands.size > 0 ? [...invBrands] : ['MM','BB','LJ','RL','OWN','All'];
+
+  const { error } = await db.from('users').insert({
+    name, email, role,
+    brands,
+    warehouses: ['Bhiwandi','Baddi','Hyderabad'],
+    department: dept || null,
+    reporting_to: currentUserEmail,
+    invited_by:   currentUserEmail,
+    is_active: true,
+  });
+
+  if (error) {
+    if (error.code === '23505') showToast('⚠ This email already has access');
+    else showToast('✗ Error: ' + error.message);
+    return;
+  }
+  closeInviteUserModal();
+  showToast(`✓ ${name} invited as ${role} — active on next login`);
+  await loadUsers();
+}
+
+// ── Hook all new loaders into loadAllData ──────────────
+// Replace the current loadAllData with the complete version
+async function loadAllData() {
+  showDbStatus('loading');
+  try {
+    await Promise.all([
+      loadPartners(),
+      loadShipments(),
+      loadUploadHistory(),
+      loadStats(),
+      loadConsignees(),
+      loadAppointments(),
+      loadServiceability(),
+      loadUsers(),
+    ]);
+    showDbStatus('live');
+  } catch(e) {
+    console.error('DB load error:', e);
+    showDbStatus('error');
+  }
+}
+
+// Update onAuthSuccess to record last login
+const _origOnAuthSuccess = onAuthSuccess;
+function onAuthSuccess(user) {
+  currentUserEmail = user.email;
+  let attempts = 0;
+  const waitForSupabase = setInterval(() => {
+    attempts++;
+    if (initSupabase()) {
+      clearInterval(waitForSupabase);
+      // Update last login timestamp
+      db.from('users').update({ last_login: new Date().toISOString() }).eq('email', user.email).then(() => {});
+      loadAllData();
+      subscribeRealtime();
+    } else if (attempts > 20) {
+      clearInterval(waitForSupabase);
+      showToast('⚠ Database connection failed');
+    }
+  }, 100);
+}
 
 // Toast
 function showToast(msg) {
