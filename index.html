@@ -1906,11 +1906,12 @@ function getFiltered() {
       || (activeChannel === 'offline' && r.channel.toLowerCase() === 'offline');
     const ms  = !searchQ
       || r.lr.toLowerCase().includes(searchQ)
-      || r.consignee.toLowerCase().includes(searchQ)
-      || r.partner.toLowerCase().includes(searchQ);
+      || (r.consignee||'').toLowerCase().includes(searchQ)
+      || (r.partner||'').toLowerCase().includes(searchQ);
     const mst = !statusQ || r.status.toLowerCase().includes(statusQ.toLowerCase());
     const mpd = !partnerDropQ || r.partner === partnerDropQ;
-    return mp && mc && ms && mst && mpd;
+    const mb  = activeBrand === 'all' || !r.brand || r.brand === activeBrand || r.brand === 'All';
+    return mp && mc && ms && mst && mpd && mb;
   });
 }
 
@@ -2525,149 +2526,6 @@ async function mdmPartnerChanged(val) {
 
   const selEl = document.getElementById('mdm-partner-select');
   if (selEl) selEl.style.borderColor = p.color;
-}
-
-// ── CURRENT USER (set by auth) ─────────────────────────
-let currentUserEmail = '';
-
-// After auth grants access, capture email and load live data
-
-
-function getFiltered() {
-  return shipments.filter(r => {
-    const mp = activePartner === 'all' || r.partner === activePartner;
-    const mc = activeChannel === 'all'
-      || (activeChannel === 'ecom' && r.channel.toLowerCase().includes('ecom'))
-      || (activeChannel === 'offline' && r.channel.toLowerCase() === 'offline');
-    const ms = !searchQ || r.lr.toLowerCase().includes(searchQ) || r.consignee.toLowerCase().includes(searchQ) || r.partner.toLowerCase().includes(searchQ);
-    const mst = !statusQ || r.status.toLowerCase().includes(statusQ.toLowerCase());
-    const mpd = !partnerDropQ || r.partner === partnerDropQ;
-    return mp && mc && ms && mst && mpd;
-  });
-}
-
-const PAGE_SIZE = 10;
-let currentPage = 1;
-
-function renderTable() {
-  const data = getFiltered();
-  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
-  if (currentPage > totalPages) currentPage = 1;
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const end   = Math.min(start + PAGE_SIZE, data.length);
-  const pageData = data.slice(start, end);
-
-  document.getElementById('lr-tbody').innerHTML = pageData.map(r => `
-    <tr>
-      <td><span class="lr-code">${r.lr}</span></td>
-      <td><span class="partner-badge ${r.pClass}">${r.partner}</span></td>
-      <td><span class="channel-tag">${r.channel}</span></td>
-      <td style="color:var(--text);font-weight:500">${r.consignee}</td>
-      <td><span class="channel-tag">${r.wh}</span></td>
-      <td><span class="date-cell">${r.dispatch}</span></td>
-      <td><span class="date-cell">${r.appt}</span></td>
-      <td><span class="date-cell ${r.status==='Delayed'?'overdue':''}">${r.delivery}</span></td>
-      <td><span class="status-pill ${r.sClass}">${r.status}</span></td>
-      <td><button class="action-btn" onclick="showToast('${r.lr} opened')">View</button></td>
-    </tr>`).join('');
-
-  // Update page info
-  if (data.length === 0) {
-    document.getElementById('page-info').textContent = 'No shipments found';
-  } else {
-    document.getElementById('page-info').textContent =
-      `Showing ${start + 1}–${end} of ${data.length} shipments`;
-  }
-
-  // Only show pagination if more than one page
-  const paginationEl = document.getElementById('page-btns');
-  if (totalPages <= 1) {
-    paginationEl.style.display = 'none';
-    return;
-  }
-  paginationEl.style.display = 'flex';
-
-  // Build pagination buttons (prev, pages, next)
-  let btns = '';
-  btns += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>‹ Prev</button>`;
-
-  // Show max 5 page numbers with ellipsis
-  let pages = [];
-  if (totalPages <= 5) {
-    pages = Array.from({length: totalPages}, (_, i) => i + 1);
-  } else if (currentPage <= 3) {
-    pages = [1, 2, 3, 4, '...', totalPages];
-  } else if (currentPage >= totalPages - 2) {
-    pages = [1, '...', totalPages-3, totalPages-2, totalPages-1, totalPages];
-  } else {
-    pages = [1, '...', currentPage-1, currentPage, currentPage+1, '...', totalPages];
-  }
-
-  pages.forEach(p => {
-    if (p === '...') {
-      btns += `<span style="padding:4px 6px;font-family:var(--font-mono);font-size:11px;color:var(--text3)">…</span>`;
-    } else {
-      btns += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
-    }
-  });
-
-  btns += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>Next ›</button>`;
-  paginationEl.innerHTML = btns;
-}
-
-function goToPage(page) {
-  const data = getFiltered();
-  const totalPages = Math.ceil(data.length / PAGE_SIZE);
-  if (page < 1 || page > totalPages) return;
-  currentPage = page;
-  renderTable();
-  // Scroll table into view smoothly
-  document.querySelector('.table-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// Reset to page 1 on any filter change
-function resetPage() { currentPage = 1; }
-
-function filterTable(q)          { searchQ = q.toLowerCase(); resetPage(); renderTable(); }
-function filterByStatus(s)       { statusQ = s; resetPage(); renderTable(); }
-function filterByPartnerDrop(p)  { partnerDropQ = p; resetPage(); renderTable(); }
-
-// Partner sidebar
-function setPartner(p, el) {
-  activePartner = p;
-  document.querySelectorAll('.partner-pill').forEach(x => x.classList.remove('active'));
-  const allEl = document.getElementById('pill-all');
-  allEl.style.background = ''; allEl.style.color = 'var(--text2)'; allEl.style.fontWeight = '500';
-  if (p === 'all') {
-    allEl.style.background = 'rgba(15,122,255,0.08)';
-    allEl.style.color = 'var(--accent)';
-    allEl.style.fontWeight = '600';
-  } else {
-    el.classList.add('active');
-  }
-  resetPage(); renderTable();
-}
-
-// Channel
-function setChannel(btn, ch) {
-  document.querySelectorAll('.ch-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeChannel = ch;
-  resetPage(); renderTable();
-}
-
-// Tab + nav
-function openModal()  { document.getElementById('lr-modal').classList.add('open'); }
-function closeModal() { document.getElementById('lr-modal').classList.remove('open'); }
-function submitLR()   { closeModal(); showToast('LR entry saved ✓'); }
-
-// Export
-function exportCSV() {
-  const data = getFiltered();
-  const h = ['LR Number','Partner','Channel','Consignee','Warehouse','Dispatch','Appointment','Delivery','Status'];
-  const csv = [h, ...data.map(r=>[r.lr,r.partner,r.channel,r.consignee,r.wh,r.dispatch,r.appt,r.delivery,r.status])].map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='B2B_LR_Tracking.csv'; a.click();
-  showToast('CSV exported ✓');
 }
 
 
@@ -3630,13 +3488,7 @@ function setBrand(btn, brand) {
   }
 }
 
-// Update getFiltered to include brand
-const _origGetFiltered = getFiltered;
-function getFiltered() {
-  return _origGetFiltered().filter(r =>
-    activeBrand === 'all' || !r.brand || r.brand === activeBrand || r.brand === 'All'
-  );
-}
+// Brand filter is merged directly into getFiltered() below — no override needed
 
 // ══════════════════════════════════════════════════════
 // SERVICEABILITY MASTER
