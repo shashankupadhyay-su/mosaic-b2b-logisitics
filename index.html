@@ -3,6 +3,9 @@
 <!-- MOSAIC_MOVE_BUILD:v2_clean -->
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mosaic Move — B2B Logistics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1857,14 +1860,23 @@ function setChannel(btn, ch) {
 
 // ── TAB + NAV ──────────────────────────────────────────
 function switchView(id, tabEl) {
-  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('view-'+id).classList.add('active');
-  tabEl.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const navEl = document.querySelector(`.nav-item[data-view="${id}"]`);
-  if (navEl) navEl.classList.add('active');
-  if (navTitles[id]) document.getElementById('page-title').textContent = navTitles[id];
+  try {
+    document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    const viewEl = document.getElementById('view-'+id);
+    if (!viewEl) { console.error('switchView: view-'+id+' not found in DOM'); return; }
+    viewEl.classList.add('active');
+    if (tabEl) tabEl.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navEl = document.querySelector('.nav-item[data-view="'+id+'"]');
+    if (navEl) navEl.classList.add('active');
+    if (navTitles && navTitles[id]) {
+      const titleEl = document.getElementById('page-title');
+      if (titleEl) titleEl.textContent = navTitles[id];
+    }
+  } catch(e) {
+    console.error('switchView error:', e);
+  }
 }
 
 const navMap    = { dashboard:0, lrboard:1, mis:2, timeline:3, consignees:4, appointments:5, serviceability:6, users:7 };
@@ -2372,10 +2384,6 @@ async function mdmPartnerChanged(val) {
 }
 
 
-let mdmSelectedPartner = '';
-let mdmSelectedFile = null;
-
-
 function mdmFileSelected(input) {
   if (input.files && input.files[0]) {
     mdmSelectedFile = input.files[0];
@@ -2494,16 +2502,7 @@ function toggleLogisticsType(type) {
 }
 
 
-const uploadHistory = [
-  { partner:'Buraq',   file:'Buraq - MIS Mosaic Wellness - 2026-03-19.xlsx',       period:'Mar 2026', rows:389, by:'Shailendra S.',  time:'19 Mar · 18:27', ok:true  },
-  { partner:'Sitics',  file:'Sitics - M0SAC WELLNESS(2026).xlsx',                  period:'Mar 2026', rows:95,  by:'Shailendra S.',  time:'19 Mar · 16:53', ok:true  },
-  { partner:'Everest', file:'Everest MIS MOSAIC B2B AND FTL HYD ECOM 18032026.xlsx',period:'Mar 2026',rows:142, by:'Shailendra S.',  time:'18 Mar · 17:45', ok:true  },
-  { partner:'Rivigo',  file:'Rivigo - MIS MOSAIC MIS 18 MARCH 2026.xlsx',          period:'Mar 2026', rows:217, by:'Shailendra S.',  time:'17 Mar · 09:10', ok:false },
-  { partner:'Buraq',   file:'Buraq - MIS Mosaic Wellness - 2026-03-12.xlsx',       period:'Mar 2026', rows:341, by:'Shailendra S.',  time:'12 Mar · 14:30', ok:true  },
-  { partner:'Everest', file:'Everest MIS MOSAIC B2B FTL HYD 11032026.xlsx',        period:'Mar 2026', rows:128, by:'Shailendra S.',  time:'11 Mar · 11:20', ok:true  },
-];
-
-const partnerColors = { Everest:'p-everest', Buraq:'p-buraq', Rivigo:'p-rivigo', Sitics:'p-sitics' };
+// uploadHistory and partnerColors declared above — removed stale duplicates
 
 
 function addUploadHistory(partner, filename) {
@@ -3482,5 +3481,14 @@ function showToast(msg) {
   setTimeout(()=>t.classList.remove('show'), 3000);
 }
 </script>
+
+<div id="version-badge" style="
+  position:fixed; bottom:10px; right:10px; z-index:99999;
+  background:#1a56b0; color:#fff;
+  font-family:monospace; font-size:10px;
+  padding:4px 8px; border-radius:4px;
+  pointer-events:none; opacity:0.8;
+">v2-LIVE</div>
+
 </body>
 </html>
