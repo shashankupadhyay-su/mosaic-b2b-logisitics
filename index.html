@@ -1,0 +1,3614 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- MOSAIC_MOVE_BUILD:v2_clean -->
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mosaic Move — B2B Logistics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- SheetJS for Excel/CSV parsing -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  /* ── CSS VARIABLES ── */
+  :root {
+    --font-head: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-body: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', ui-monospace, monospace;
+    --bg:        #f4f6f9;
+    --surface:   #ffffff;
+    --surface2:  #f0f3f8;
+    --border:    #e2e6ed;
+    --text:      #1a202c;
+    --text2:     #4a5568;
+    --text3:     #9aa3b2;
+    --accent:    #0f7aff;
+    --accent2:   #6c47ff;
+    --accent3:   #0ea5e9;
+    --delivered: #10b981;
+    --intransit: #0f7aff;
+    --delayed:   #f59e0b;
+    --attempted: #f97316;
+    --failed:    #ef4444;
+    --pending:   #f59e0b;
+  }
+  /* ── AUTH SCREEN ── */
+  #auth-screen {
+    position:fixed; inset:0; z-index:9999;
+    background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 60%, #f4f6f9 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-body);
+  }
+  #auth-screen.hidden { display:none; }
+
+  .auth-card {
+    background:#fff; border:1px solid #e2e6ed;
+    border-radius:16px; padding:44px 40px;
+    width:420px; text-align:center;
+    box-shadow:0 8px 40px rgba(15,122,255,0.08), 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .auth-logo-tag {
+    font-size:10px; letter-spacing:3px; text-transform:uppercase;
+    color:#0f7aff; font-family:var(--font-mono); margin-bottom:6px;
+  }
+  .auth-title {
+    font-size:22px; font-weight:800; color:#0f1724;
+    line-height:1.2; margin-bottom:6px;
+  }
+  .auth-sub {
+    font-size:12px; color:#9aa3b2;
+    font-family:var(--font-mono); margin-bottom:32px;
+  }
+  .auth-divider {
+    display:flex; align-items:center; gap:12px;
+    margin-bottom:24px;
+  }
+  .auth-divider-line { flex:1; height:1px; background:#e2e6ed; }
+  .auth-divider-text { font-size:10px; color:#9aa3b2; font-family:var(--font-mono); white-space:nowrap; }
+
+  .auth-google-btn {
+    width:100%; padding:12px 20px;
+    background:#fff; border:1.5px solid #e2e6ed;
+    border-radius:10px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    font-family:var(--font-body); font-size:14px;
+    font-weight:600; color:#0f1724;
+    transition:all .2s; box-shadow:0 1px 4px rgba(0,0,0,0.06);
+  }
+  .auth-google-btn:hover {
+    border-color:#0f7aff; background:#fafcff;
+    box-shadow:0 4px 16px rgba(15,122,255,0.12);
+  }
+  .auth-google-icon { width:20px; height:20px; flex-shrink:0; }
+
+  .auth-domain-note {
+    margin-top:20px; padding:10px 14px;
+    background:rgba(15,122,255,0.04); border:1px solid rgba(15,122,255,0.12);
+    border-radius:8px;
+    font-size:11px; font-family:var(--font-mono);
+    color:#4a5568; line-height:1.6;
+  }
+  .auth-domain-note strong { color:#0f7aff; }
+
+  .auth-error {
+    margin-top:16px; padding:10px 14px;
+    background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2);
+    border-radius:8px; font-size:11px;
+    font-family:var(--font-mono); color:#ef4444;
+    display:none;
+  }
+  .auth-error.show { display:block; }
+
+  .auth-loading {
+    margin-top:16px; font-size:11px;
+    font-family:var(--font-mono); color:#9aa3b2;
+    display:none;
+  }
+  .auth-loading.show { display:block; }
+
+  /* ── USER AVATAR IN TOPBAR ── */
+  .user-chip {
+    display:flex; align-items:center; gap:8px;
+    padding:5px 12px 5px 6px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:20px; cursor:pointer; transition:all .15s;
+  }
+  .user-chip:hover { border-color:var(--border2); }
+  .user-avatar {
+    width:26px; height:26px; border-radius:50%;
+    object-fit:cover; flex-shrink:0;
+  }
+  .user-avatar-placeholder {
+    width:26px; height:26px; border-radius:50%;
+    background:var(--accent); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; flex-shrink:0;
+  }
+  .user-name { font-size:11px; font-weight:600; color:var(--text2); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .signout-btn {
+    padding:6px 11px; background:none;
+    border:1px solid var(--border); border-radius:7px;
+    color:var(--text3); font-family:var(--font-mono);
+    font-size:10px; cursor:pointer; transition:all .15s;
+  }
+  .signout-btn:hover { border-color:var(--failed); color:var(--failed); }
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface2: #f0f2f5;
+    --border: #e2e6ed;
+    --border2: #d0d5df;
+    --accent: #0f7aff;
+    --accent3: #6c47ff;
+    --accent4: #f59e0b;
+    --text: #0f1724;
+    --text2: #4a5568;
+    --text3: #9aa3b2;
+    --delivered: #10b981;
+    --intransit: #0f7aff;
+    --pending: #f59e0b;
+    --delayed: #ff6b35;
+    --failed: #ef4444;
+    --attempted: #8b5cf6;
+    --font-head: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', ui-monospace, monospace;
+    --font-body: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font-body); font-size:13px; min-height:100vh; overflow-x:hidden; }
+
+  /* SIDEBAR */
+  .sidebar { position:fixed; top:0; left:0; bottom:0; width:220px; background:#fff; border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:100; box-shadow:2px 0 12px rgba(0,0,0,0.04); }
+  .logo-area { padding:20px 20px 16px; border-bottom:1px solid var(--border); }
+  .logo-tag { font-size:9px; font-family:var(--font-mono); color:var(--accent); letter-spacing:3px; text-transform:uppercase; margin-bottom:4px; }
+  .logo-name { font-family:var(--font-head); font-weight:800; font-size:16px; color:var(--text); line-height:1.15; }
+  .logo-sub { font-size:10px; color:var(--text3); margin-top:3px; font-family:var(--font-mono); }
+  .nav-section { padding:14px 14px 5px; font-size:9px; font-family:var(--font-mono); letter-spacing:2px; color:var(--text3); text-transform:uppercase; }
+  .nav-item { display:flex; align-items:center; gap:9px; padding:9px 14px; margin:1px 8px; border-radius:7px; cursor:pointer; color:var(--text2); font-size:12.5px; font-weight:500; transition:all .15s; }
+  .nav-item:hover { background:var(--surface2); color:var(--text); }
+  .nav-item.active { background:rgba(15,122,255,0.08); color:var(--accent); font-weight:600; }
+  .nav-badge { margin-left:auto; background:#ff6b35; color:#fff; font-size:9px; padding:2px 6px; border-radius:10px; font-family:var(--font-mono); }
+  .partner-section { margin-top:auto; border-top:1px solid var(--border); padding:14px; }
+  .partner-label { font-size:9px; font-family:var(--font-mono); color:var(--text3); letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; }
+  .partner-pill { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:6px; cursor:pointer; margin-bottom:2px; transition:background .15s; }
+  .partner-pill:hover { background:var(--surface2); }
+  .partner-pill.active { background:rgba(15,122,255,0.07); }
+  .partner-dot { width:8px; height:8px; border-radius:50%; }
+  .partner-pname { font-size:12px; color:var(--text2); font-weight:500; }
+  .partner-count { margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text3); }
+
+  /* MAIN */
+  .main { margin-left:220px; min-height:100vh; display:flex; flex-direction:column; }
+  .topbar { position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.96); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:12px 28px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 8px rgba(0,0,0,0.05); }
+  .page-title { font-family:var(--font-head); font-weight:800; font-size:18px; }
+  .page-sub { font-size:10px; color:var(--text3); font-family:var(--font-mono); margin-top:1px; }
+  .topbar-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .channel-toggle { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .ch-btn { padding:6px 13px; font-size:11px; font-family:var(--font-mono); cursor:pointer; color:var(--text2); border:none; background:none; transition:all .15s; }
+  .ch-btn.active { background:var(--accent); color:#fff; font-weight:600; }
+  .sync-btn { display:flex; align-items:center; gap:6px; padding:7px 13px; background:rgba(15,122,255,0.06); border:1px solid rgba(15,122,255,0.2); border-radius:8px; color:var(--accent); font-size:11px; font-family:var(--font-mono); cursor:pointer; transition:all .2s; }
+  .sync-btn:hover { background:rgba(15,122,255,0.12); }
+  .add-btn { padding:7px 14px; background:var(--accent); border:none; border-radius:8px; color:#fff; font-size:11px; font-family:var(--font-mono); cursor:pointer; font-weight:600; transition:all .2s; }
+  .add-btn:hover { background:#0068e0; }
+  .sync-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+  /* CONTENT & TABS */
+  .content { padding:22px 28px; flex:1; }
+  .view-tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:22px; }
+  .view-tab { padding:10px 20px; font-size:12px; font-family:var(--font-mono); color:var(--text3); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; white-space:nowrap; }
+  .view-tab:hover { color:var(--text2); }
+  .view-tab.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+  .view-section { display:none; }
+  .view-section.active { display:block; }
+
+  /* KPI */
+  .kpi-strip { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:20px; }
+  .kpi-card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:15px 16px; position:relative; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.04); transition:box-shadow .2s; }
+  .kpi-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .kpi-card.k1::before { background:var(--accent3); }
+  .kpi-card.k2::before { background:var(--delivered); }
+  .kpi-card.k3::before { background:var(--intransit); }
+  .kpi-card.k4::before { background:var(--attempted); }
+  .kpi-card.k5::before { background:var(--delayed); }
+  .kpi-card.k6::before { background:var(--failed); }
+  .kpi-label { font-size:10px; font-family:var(--font-mono); color:var(--text3); letter-spacing:.8px; text-transform:uppercase; margin-bottom:8px; }
+  .kpi-value { font-family:var(--font-head); font-size:28px; font-weight:800; line-height:1; margin-bottom:5px; }
+  .kpi-delta { font-size:10px; font-family:var(--font-mono); color:var(--text3); }
+  .kpi-delta .up { color:var(--delivered); }
+  .kpi-delta .dn { color:var(--failed); }
+
+  /* DELIVERY TRIO */
+  .delivery-trio { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .trio-card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 22px; box-shadow:0 1px 6px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:14px; position:relative; overflow:hidden; }
+  .trio-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:4px; border-radius:0 0 12px 12px; }
+  .trio-card.tc-delivered::after { background:var(--delivered); }
+  .trio-card.tc-transit::after   { background:var(--intransit); }
+  .trio-card.tc-attempted::after { background:var(--attempted); }
+  .trio-icon { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .trio-card.tc-delivered .trio-icon { background:rgba(16,185,129,0.1); }
+  .trio-card.tc-transit .trio-icon   { background:rgba(15,122,255,0.1); }
+  .trio-card.tc-attempted .trio-icon { background:rgba(139,92,246,0.1); }
+  .trio-head { font-size:11px; font-family:var(--font-mono); letter-spacing:1px; text-transform:uppercase; color:var(--text3); margin-bottom:2px; }
+  .trio-num { font-family:var(--font-head); font-weight:800; font-size:46px; line-height:1; }
+  .tc-delivered .trio-num { color:var(--delivered); }
+  .tc-transit .trio-num   { color:var(--intransit); }
+  .tc-attempted .trio-num { color:var(--attempted); }
+  .trio-pct { font-family:var(--font-mono); font-size:11px; color:var(--text3); }
+  .trio-bar-track { height:6px; background:var(--surface2); border-radius:10px; overflow:hidden; }
+  .trio-bar-fill { height:100%; border-radius:10px; }
+  .tc-delivered .trio-bar-fill { background:var(--delivered); }
+  .tc-transit .trio-bar-fill   { background:var(--intransit); }
+  .tc-attempted .trio-bar-fill { background:var(--attempted); }
+  .trio-breakdown { display:flex; flex-direction:column; gap:6px; }
+  .trio-sub { display:flex; align-items:center; justify-content:space-between; font-size:11px; }
+  .trio-sub-label { color:var(--text2); }
+  .trio-sub-val { font-family:var(--font-mono); font-weight:600; }
+  .trio-divider { border-top:1px solid var(--border); padding-top:6px; margin-top:2px; }
+
+  /* MID GRID */
+  .mid-grid { display:grid; grid-template-columns:1fr 1fr 320px; gap:14px; margin-bottom:20px; }
+  .card { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.04); }
+  .card-header { padding:13px 18px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+  .card-title { font-family:var(--font-head); font-weight:700; font-size:13px; flex:1; }
+  .card-tag { font-size:9px; font-family:var(--font-mono); color:var(--text3); }
+
+  /* Donut */
+  .donut-wrap { display:flex; align-items:center; gap:18px; padding:16px 18px; }
+  .legend-item { display:flex; align-items:center; gap:8px; margin-bottom:9px; }
+  .legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .legend-name { color:var(--text2); font-size:12px; flex:1; }
+  .legend-val { font-family:var(--font-mono); font-size:12px; color:var(--text); font-weight:500; }
+  .legend-pct { font-family:var(--font-mono); font-size:10px; color:var(--text3); width:32px; text-align:right; }
+
+  /* Bar chart */
+  .bar-chart { padding:14px 18px; }
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .bar-label { font-size:11px; font-family:var(--font-mono); color:var(--text2); width:52px; flex-shrink:0; }
+  .bar-track { flex:1; height:22px; background:var(--surface2); border-radius:5px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:5px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; }
+  .bar-num { font-family:var(--font-mono); font-size:10px; color:#fff; font-weight:600; }
+  .bar-total { font-family:var(--font-mono); font-size:11px; color:var(--text3); width:34px; text-align:right; }
+  .sparkline-area { display:flex; align-items:flex-end; gap:3px; height:30px; margin-top:10px; }
+  .spark-bar { flex:1; background:var(--accent); border-radius:2px 2px 0 0; opacity:.2; transition:opacity .15s; }
+  .spark-bar:hover { opacity:.7; }
+  .spark-bar.hi { opacity:.6; }
+
+  /* Alerts */
+  .alert-list { padding:4px 0; }
+  .alert-item { padding:9px 16px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:10px; cursor:pointer; transition:background .15s; }
+  .alert-item:hover { background:var(--surface2); }
+  .alert-item:last-child { border-bottom:none; }
+  .alert-icon { width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; margin-top:1px; }
+  .alert-icon.warn  { background:rgba(245,158,11,0.1); }
+  .alert-icon.error { background:rgba(239,68,68,0.1); }
+  .alert-icon.info  { background:rgba(15,122,255,0.1); }
+  .alert-icon.ok    { background:rgba(16,185,129,0.1); }
+  .alert-body { flex:1; }
+  .alert-title { font-size:12px; font-weight:600; color:var(--text); margin-bottom:2px; }
+  .alert-meta { font-size:10px; font-family:var(--font-mono); color:var(--text3); }
+  .alert-time { font-size:10px; font-family:var(--font-mono); color:var(--text3); white-space:nowrap; }
+
+  /* TABLE */
+  .table-section { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.04); }
+  .table-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .table-title { font-family:var(--font-head); font-weight:700; font-size:14px; }
+  .table-controls { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+  .search-input { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:7px 12px; color:var(--text); font-family:var(--font-mono); font-size:11px; width:200px; outline:none; transition:all .2s; }
+  .search-input:focus { border-color:var(--accent); background:#fff; }
+  .search-input::placeholder { color:var(--text3); }
+  .filter-select { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:7px 10px; color:var(--text2); font-family:var(--font-mono); font-size:11px; outline:none; cursor:pointer; }
+  .export-btn { background:#fff; border:1px solid var(--border); border-radius:7px; padding:7px 12px; color:var(--text2); font-family:var(--font-mono); font-size:11px; cursor:pointer; transition:all .15s; }
+  .export-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .data-table { width:100%; border-collapse:collapse; }
+  .data-table th { padding:9px 14px; text-align:left; font-size:9px; font-family:var(--font-mono); letter-spacing:1.5px; text-transform:uppercase; color:var(--text3); border-bottom:1px solid var(--border); background:var(--surface2); white-space:nowrap; cursor:pointer; }
+  .data-table th:hover { color:var(--text2); }
+  .data-table td { padding:10px 14px; font-size:12px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text2); }
+  .data-table tbody tr:hover td { background:rgba(15,122,255,0.025); }
+  .data-table tr:last-child td { border-bottom:none; }
+  .lr-code { font-family:var(--font-mono); font-size:11px; color:var(--accent3); font-weight:600; }
+  .partner-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; font-size:10px; font-family:var(--font-mono); font-weight:600; }
+  .p-everest { background:rgba(108,71,255,0.08); color:#6c47ff; }
+  .p-buraq   { background:rgba(16,185,129,0.08); color:#059669; }
+  .p-rivigo  { background:rgba(255,107,53,0.08); color:#ff6b35; }
+  .p-sitics  { background:rgba(245,158,11,0.08); color:#d97706; }
+  .status-pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:10px; font-family:var(--font-mono); font-weight:500; white-space:nowrap; }
+  .status-pill::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
+  .s-delivered { background:rgba(16,185,129,0.1);  color:var(--delivered); }
+  .s-transit   { background:rgba(15,122,255,0.1);  color:var(--intransit); }
+  .s-pending   { background:rgba(245,158,11,0.1);  color:var(--pending); }
+  .s-delayed   { background:rgba(255,107,53,0.1);  color:var(--delayed); }
+  .s-failed    { background:rgba(239,68,68,0.1);   color:var(--failed); }
+  .s-attempted { background:rgba(139,92,246,0.1);  color:var(--attempted); }
+  .channel-tag { font-size:10px; font-family:var(--font-mono); color:var(--text3); text-transform:uppercase; }
+  .date-cell { font-family:var(--font-mono); font-size:11px; }
+  .date-cell.overdue { color:var(--failed); font-weight:600; }
+  .action-btn { background:#fff; border:1px solid var(--border); border-radius:5px; padding:4px 9px; color:var(--text3); font-size:10px; font-family:var(--font-mono); cursor:pointer; transition:all .15s; }
+  .action-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .table-footer { padding:11px 18px; border-top:1px solid var(--border); display:flex; align-items:center; font-size:11px; font-family:var(--font-mono); color:var(--text3); background:var(--surface2); }
+  .page-info { flex:1; }
+  .page-btns { display:flex; gap:4px; }
+  .page-btn { padding:4px 10px; border:1px solid var(--border); border-radius:5px; background:#fff; color:var(--text3); font-family:var(--font-mono); font-size:11px; cursor:pointer; transition:all .15s; }
+  .page-btn:hover, .page-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(15,122,255,0.05); }
+
+  /* MIS */
+  .mis-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  .mis-card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.04); transition:box-shadow .2s; }
+  .mis-card:hover { box-shadow:0 4px 14px rgba(0,0,0,0.08); }
+  .mis-card.updated { border-color:rgba(15,122,255,0.25); }
+  .mis-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .mis-partner-name { font-family:var(--font-head); font-weight:800; font-size:16px; }
+  .mis-status { font-size:9px; font-family:var(--font-mono); padding:3px 8px; border-radius:10px; letter-spacing:1px; text-transform:uppercase; }
+  .mis-status.live  { background:rgba(16,185,129,0.1); color:#059669; }
+  .mis-status.stale { background:rgba(255,107,53,0.1); color:var(--delayed); }
+  .mis-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .mis-stat-val { font-family:var(--font-head); font-weight:800; font-size:22px; line-height:1; }
+  .mis-stat-label { font-size:9px; font-family:var(--font-mono); color:var(--text3); margin-top:2px; }
+  .mis-updated { margin-top:10px; font-size:10px; font-family:var(--font-mono); color:var(--text3); display:flex; align-items:center; gap:5px; }
+  .mis-sync-btn { margin-top:10px; width:100%; padding:7px; background:var(--surface2); border:1px solid var(--border); border-radius:7px; color:var(--text2); font-family:var(--font-mono); font-size:11px; cursor:pointer; transition:all .15s; }
+  .mis-sync-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .mis-sync-btn.warn { border-color:rgba(255,107,53,0.4); color:var(--delayed); }
+  .mis-sync-btn.warn:hover { background:rgba(255,107,53,0.05); }
+  .upload-zone { border:2px dashed var(--border); border-radius:10px; padding:32px; text-align:center; cursor:pointer; transition:all .2s; }
+  .upload-zone:hover { border-color:var(--accent); background:rgba(15,122,255,0.02); }
+
+  /* TIMELINE */
+  .tl-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .tl-card { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:0 1px 5px rgba(0,0,0,0.04); }
+  .tl-card-head { padding:13px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .tl-card-title { font-family:var(--font-head); font-weight:700; font-size:13px; }
+  .tl-card-sub { font-size:10px; font-family:var(--font-mono); color:var(--text3); margin-top:2px; }
+  .tl-body { padding:20px 18px; }
+  .tl-step { display:flex; gap:14px; position:relative; padding-bottom:22px; }
+  .tl-step:last-child { padding-bottom:0; }
+  .tl-step:not(:last-child)::before { content:''; position:absolute; left:13px; top:28px; bottom:0; width:1px; background:var(--border); }
+  .tl-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; border:2px solid; flex-shrink:0; position:relative; z-index:1; }
+  .tl-dot.done    { background:rgba(16,185,129,0.1);  border-color:var(--delivered); color:var(--delivered); }
+  .tl-dot.active  { background:rgba(15,122,255,0.1);  border-color:var(--intransit); color:var(--intransit); animation:dotPulse 2s infinite; }
+  .tl-dot.error   { background:rgba(239,68,68,0.1);   border-color:var(--failed);    color:var(--failed); }
+  .tl-dot.warn    { background:rgba(139,92,246,0.1);  border-color:var(--attempted); color:var(--attempted); }
+  .tl-dot.waiting { background:var(--surface2);        border-color:var(--border2);   color:var(--text3); }
+  @keyframes dotPulse { 0%,100%{box-shadow:0 0 0 0 rgba(15,122,255,0.3)} 50%{box-shadow:0 0 0 5px rgba(15,122,255,0)} }
+  .tl-content { flex:1; padding-top:4px; }
+  .tl-title { font-size:13px; font-weight:600; color:var(--text); }
+  .tl-detail { font-size:10px; font-family:var(--font-mono); color:var(--text3); margin-top:3px; }
+  .tl-detail.blue { color:var(--intransit); }
+  .tl-detail.red  { color:var(--failed); }
+  .tl-detail.purple { color:var(--attempted); }
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; background:rgba(15,23,36,0.5); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:#fff; border:1px solid var(--border); border-radius:14px; width:580px; max-height:82vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.12); }
+  .modal-head { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; }
+  .modal-title { font-family:var(--font-head); font-weight:700; font-size:16px; flex:1; }
+  .modal-close { background:none; border:none; color:var(--text3); font-size:22px; cursor:pointer; line-height:1; }
+  .modal-close:hover { color:var(--text); }
+  .modal-body { padding:20px 22px; }
+  .form-row { margin-bottom:14px; }
+  .form-label { font-size:10px; font-family:var(--font-mono); letter-spacing:1px; text-transform:uppercase; color:var(--text3); margin-bottom:5px; display:block; }
+  .form-input, .form-select { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:12px; outline:none; transition:border-color .2s; }
+  .form-input:focus, .form-select:focus { border-color:var(--accent); background:#fff; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .submit-btn { width:100%; padding:11px; background:var(--accent); border:none; border-radius:8px; color:#fff; font-family:var(--font-head); font-weight:700; font-size:13px; cursor:pointer; transition:all .2s; margin-top:6px; }
+  .submit-btn:hover { background:#0068e0; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:24px; right:24px; background:#fff; border:1px solid var(--border2); border-radius:10px; padding:12px 18px; display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:12px; color:var(--text); z-index:999; box-shadow:0 8px 30px rgba(0,0,0,0.1); transform:translateY(80px); opacity:0; transition:all .3s cubic-bezier(.34,1.56,.64,1); }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast-icon { color:var(--delivered); font-size:16px; }
+
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:10px; }
+</style>
+
+<script>
+// ══════════════════════════════════════════
+// AUTH FUNCTIONS — defined early in <head>
+// so the login button can call them immediately
+// ══════════════════════════════════════════
+
+const GOOGLE_CLIENT_ID = '846484058604-47uuotrjc6jtsifmdrn4avmq6aaepeg7.apps.googleusercontent.com';
+const ALLOWED_DOMAIN   = 'mosaicwellness.in';
+const SESSION_KEY      = 'mw_b2b_auth_session';
+
+function saveSession(user) {
+  const session = { email: user.email, name: user.name, picture: user.picture, expiry: Date.now() + 8 * 60 * 60 * 1000 };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function getSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+    if (s && s.expiry > Date.now()) return s;
+    sessionStorage.removeItem(SESSION_KEY);
+    return null;
+  } catch { return null; }
+}
+
+function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  if (el) { el.textContent = msg; el.classList.add('show'); }
+  const ld = document.getElementById('auth-loading');
+  if (ld) ld.classList.remove('show');
+}
+
+function showAuthLoading() {
+  const ld = document.getElementById('auth-loading');
+  if (ld) ld.classList.add('show');
+  const er = document.getElementById('auth-error');
+  if (er) er.classList.remove('show');
+}
+
+function grantAccess(user) {
+  const initials = (user.name || 'U').split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
+  const initialsEl = document.getElementById('user-initials');
+  if (initialsEl) initialsEl.textContent = initials;
+  const nameEl = document.getElementById('user-display-name');
+  if (nameEl) nameEl.textContent = (user.name || '').split(' ')[0];
+
+  if (user.picture) {
+    const chip = document.getElementById('user-chip');
+    const placeholder = document.getElementById('user-initials');
+    if (chip && placeholder) {
+      const img = document.createElement('img');
+      img.src = user.picture; img.className = 'user-avatar'; img.alt = user.name;
+      img.onerror = () => {};
+      chip.replaceChild(img, placeholder);
+    }
+  }
+
+  const authScreen = document.getElementById('auth-screen');
+  if (authScreen) authScreen.classList.add('hidden');
+  const appShell = document.getElementById('app-shell');
+  if (appShell) appShell.style.display = 'block';
+
+  if (typeof onAuthSuccess === 'function') onAuthSuccess(user);
+}
+
+function signOut() {
+  clearSession();
+  if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
+  location.reload();
+}
+
+function handleGoogleCredential(response) {
+  showAuthLoading();
+  try {
+    const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const email   = payload.email   || '';
+    const name    = payload.name    || email.split('@')[0];
+    const picture = payload.picture || '';
+    const domain  = email.split('@')[1] || '';
+
+    if (domain !== ALLOWED_DOMAIN) {
+      showAuthError('Access denied. Only @' + ALLOWED_DOMAIN + ' accounts are permitted. You signed in with: ' + email);
+      if (window.google) google.accounts.id.disableAutoSelect();
+      return;
+    }
+    const user = { email, name, picture };
+    saveSession(user);
+    grantAccess(user);
+  } catch (err) {
+    showAuthError('Authentication failed. Please try again.');
+    console.error('Auth error:', err);
+  }
+}
+
+function startGoogleAuth() {
+  showAuthLoading();
+
+  if (!window.google || !google.accounts) {
+    // Google SDK not loaded yet — wait and retry once
+    setTimeout(() => {
+      if (!window.google || !google.accounts) {
+        showAuthError('Google Sign-In could not load. Please check your internet connection and refresh.');
+        return;
+      }
+      _triggerGooglePrompt();
+    }, 1500);
+    return;
+  }
+  _triggerGooglePrompt();
+}
+
+function _triggerGooglePrompt() {
+  google.accounts.id.initialize({
+    client_id:             GOOGLE_CLIENT_ID,
+    callback:              handleGoogleCredential,
+    auto_select:           false,
+    cancel_on_tap_outside: true,
+    hd:                    ALLOWED_DOMAIN
+  });
+  google.accounts.id.prompt(notification => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      document.getElementById('auth-loading')?.classList.remove('show');
+      // One Tap suppressed — render a visible button instead
+      const btnArea = document.getElementById('google-btn-area');
+      if (btnArea) {
+        google.accounts.id.renderButton(btnArea, {
+          theme: 'outline', size: 'large', width: 340,
+          text: 'continue_with', shape: 'rectangular'
+        });
+      }
+    }
+  });
+}
+
+function initGoogleAuth() {
+  const session = getSession();
+  if (session) { grantAccess(session); return; }
+  // Session expired — show login screen, no auto-prompt
+}
+
+window.addEventListener('load', () => {
+  setTimeout(initGoogleAuth, 200);
+  // Show empty table state immediately so UI doesn't look broken
+  const tbody = document.getElementById('lr-tbody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#9aa3b2;font-family:JetBrains Mono,monospace;font-size:12px">Sign in to load shipment data</td></tr>';
+  }
+});
+</script>
+
+</head>
+<body>
+
+<!-- ═══ AUTH SCREEN ═══ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo-tag">Mosaic Wellness</div>
+    <div class="auth-title">Mosaic Move</div>
+    <div class="auth-sub">B2B Logistics · Supply Chain · India / UAE / UK</div>
+
+    <div class="auth-divider">
+      <div class="auth-divider-line"></div>
+      <div class="auth-divider-text">SIGN IN TO CONTINUE</div>
+      <div class="auth-divider-line"></div>
+    </div>
+
+    <button class="auth-google-btn" onclick="startGoogleAuth()">
+      <!-- Google G logo SVG -->
+      <svg class="auth-google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="auth-domain-note">
+      🔒 Access restricted to <strong>@mosaicwellness.in</strong> accounts only.<br>
+      Use your company Google account to sign in.
+    </div>
+
+    <div id="google-btn-area" style="display:flex;justify-content:center;margin-bottom:8px"></div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-loading" id="auth-loading">Verifying your account…</div>
+  </div>
+</div>
+
+
+<!-- ═══ APP (hidden until auth) ═══ -->
+<div id="app-shell" style="display:none">
+<div class="sidebar">
+  <div class="logo-area">
+    <div class="logo-tag">Mosaic Wellness</div>
+    <div class="logo-name">Mosaic Move</div>
+    <div class="logo-sub">B2B Logistics · Supply Chain</div>
+  </div>
+
+  <div class="nav-section">Views</div>
+  <div class="nav-item active" onclick="setNav(this,'dashboard')" data-view="dashboard"><span style="font-size:15px">⬡</span> Dashboard</div>
+  <div class="nav-item" onclick="setNav(this,'lrboard')" data-view="lrboard"><span style="font-size:15px">◎</span> LR Tracking <span class="nav-badge">3</span></div>
+  <div class="nav-item" onclick="setNav(this,'mis')" data-view="mis"><span style="font-size:15px">▤</span> MIS Manager</div>
+  <div class="nav-item" onclick="setNav(this,'timeline')" data-view="timeline"><span style="font-size:15px">⟳</span> Shipment Timeline</div>
+  <div class="nav-item" onclick="setNav(this,'consignees')" data-view="consignees"><span style="font-size:15px">◉</span> Consignee Master</div>
+  <div class="nav-item" onclick="setNav(this,'appointments')" data-view="appointments"><span style="font-size:15px">📅</span> Appointments</div>
+  <div class="nav-item" onclick="setNav(this,'serviceability')" data-view="serviceability"><span style="font-size:15px">🗺</span> Serviceability</div>
+  <div class="nav-item" onclick="setNav(this,'users')" data-view="users"><span style="font-size:15px">👥</span> Users</div>
+
+  <div class="nav-section">Partners</div>
+  <div id="pill-all" style="display:flex;align-items:center;gap:9px;padding:9px 14px;margin:1px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;background:rgba(15,122,255,0.08);color:var(--accent)" onclick="setPartner('all',this)">
+    <span style="font-size:15px">◈</span> All Partners
+  </div>
+
+  <div class="partner-section">
+    <div class="partner-label">Logistics Partners</div>
+    <div class="partner-pill" id="pill-everest" onclick="setPartner('Everest',this)">
+      <div class="partner-dot" style="background:#6c47ff"></div>
+      <span class="partner-pname">Everest</span>
+      <span class="partner-count" id="cnt-ev">142</span>
+    </div>
+    <div class="partner-pill" id="pill-buraq" onclick="setPartner('Buraq',this)">
+      <div class="partner-dot" style="background:#059669"></div>
+      <span class="partner-pname">Buraq</span>
+      <span class="partner-count" id="cnt-bq">389</span>
+    </div>
+    <div class="partner-pill" id="pill-rivigo" onclick="setPartner('Rivigo',this)">
+      <div class="partner-dot" style="background:#ff6b35"></div>
+      <span class="partner-pname">Rivigo</span>
+      <span class="partner-count" id="cnt-rv">217</span>
+    </div>
+    <div class="partner-pill" id="pill-sitics" onclick="setPartner('Sitics',this)">
+      <div class="partner-dot" style="background:#d97706"></div>
+      <span class="partner-pname">Sitics</span>
+      <span class="partner-count" id="cnt-st">95</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="page-title">Mosaic Move</div>
+      <div class="page-sub">BHIWANDI · BADDI · HYD · ECOM/QCOM · OFFLINE</div>
+    </div>
+    <div class="topbar-right">
+      <div class="channel-toggle">
+        <button class="ch-btn active" onclick="setChannel(this,'all')">ALL</button>
+        <button class="ch-btn" onclick="setChannel(this,'ecom')">ECOM/QCOM</button>
+        <button class="ch-btn" onclick="setChannel(this,'offline')">OFFLINE</button>
+      </div>
+      <div class="channel-toggle" id="brand-toggle">
+        <button class="ch-btn active" onclick="setBrand(this,'all')">ALL BRANDS</button>
+        <button class="ch-btn" onclick="setBrand(this,'MM')" title="Man Matters">MM</button>
+        <button class="ch-btn" onclick="setBrand(this,'BB')" title="Be Bodywise">BB</button>
+        <button class="ch-btn" onclick="setBrand(this,'LJ')" title="Little Joys">LJ</button>
+        <button class="ch-btn" onclick="setBrand(this,'RL')" title="Root Labs">RL</button>
+        <button class="ch-btn" onclick="setBrand(this,'OWN')" title="Only What's Needed">OWN</button>
+      </div>
+      <div class="sync-btn" onclick="showToast('Syncing all partner data…')">
+        <div class="sync-dot"></div> LIVE SYNC
+      </div>
+      <button class="add-btn" onclick="openModal()">+ Add LR</button>
+      <div id="user-chip" class="user-chip" title="Signed in">
+        <div class="user-avatar-placeholder" id="user-initials">?</div>
+        <span class="user-name" id="user-display-name">Loading…</span>
+      </div>
+      <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="view-tabs">
+      <div class="view-tab active" onclick="switchView('dashboard',this)">DASHBOARD</div>
+      <div class="view-tab" onclick="switchView('lrboard',this)">LR BOARD</div>
+      <div class="view-tab" onclick="switchView('mis',this)">MIS UPDATION</div>
+      <div class="view-tab" onclick="switchView('timeline',this)">SHIPMENT TIMELINE</div>
+      <div class="view-tab" onclick="switchView('consignees',this)">CONSIGNEE MASTER</div>
+      <div class="view-tab" onclick="switchView('appointments',this)">APPOINTMENT TRACKER</div>
+      <div class="view-tab" onclick="switchView('serviceability',this)">SERVICEABILITY</div>
+      <div class="view-tab" onclick="switchView('users',this)">USERS</div>
+    </div>
+
+    <div id="view-dashboard" class="view-section active">
+      <div class="kpi-strip">
+        <div class="kpi-card k1">
+          <div class="kpi-label">Total Shipments</div>
+          <div class="kpi-value" style="color:var(--accent3)">843</div>
+          <div class="kpi-delta"><span class="up">↑ 12%</span> vs last week</div>
+        </div>
+        <div class="kpi-card k2">
+          <div class="kpi-label">Delivered</div>
+          <div class="kpi-value" style="color:var(--delivered)">612</div>
+          <div class="kpi-delta"><span class="up">72.6%</span> delivery rate</div>
+        </div>
+        <div class="kpi-card k3">
+          <div class="kpi-label">In Transit</div>
+          <div class="kpi-value" style="color:var(--intransit)">138</div>
+          <div class="kpi-delta">Avg ETA <span style="color:var(--text)">1.8d</span></div>
+        </div>
+        <div class="kpi-card k4">
+          <div class="kpi-label">Attempted / UD</div>
+          <div class="kpi-value" style="color:var(--attempted)">47</div>
+          <div class="kpi-delta">5.6% attempt-fail</div>
+        </div>
+        <div class="kpi-card k5">
+          <div class="kpi-label">Delayed</div>
+          <div class="kpi-value" style="color:var(--delayed)">17</div>
+          <div class="kpi-delta"><span class="dn">+8</span> since yesterday</div>
+        </div>
+        <div class="kpi-card k6">
+          <div class="kpi-label">Failed / RTO</div>
+          <div class="kpi-value" style="color:var(--failed)">29</div>
+          <div class="kpi-delta">3.4% failure rate</div>
+        </div>
+      </div>
+
+      <!-- BIG THREE STATUS CARDS -->
+      <div class="delivery-trio">
+        <div class="trio-card tc-delivered">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div class="trio-icon">✅</div>
+            <div><div class="trio-head">Shipments Delivered</div><div class="trio-num">612</div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span class="trio-pct">72.6% of total dispatched</span>
+              <span class="trio-pct">Target: 80%</span>
+            </div>
+            <div class="trio-bar-track"><div class="trio-bar-fill" style="width:72.6%"></div></div>
+          </div>
+          <div class="trio-breakdown">
+            <div class="trio-sub"><span class="trio-sub-label">Ecom / Qcom</span><span class="trio-sub-val" style="color:var(--delivered)">341</span></div>
+            <div class="trio-sub"><span class="trio-sub-label">Offline channel</span><span class="trio-sub-val" style="color:var(--delivered)">271</span></div>
+            <div class="trio-sub trio-divider"><span class="trio-sub-label">On-time (OTIF)</span><span class="trio-sub-val" style="color:var(--delivered)">558 &nbsp;·&nbsp; 72.6%</span></div>
+          </div>
+        </div>
+
+        <div class="trio-card tc-transit">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div class="trio-icon">🚚</div>
+            <div><div class="trio-head">Shipments In Transit</div><div class="trio-num">138</div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span class="trio-pct">16.4% of total dispatched</span>
+              <span class="trio-pct">Avg ETA: 1.8d</span>
+            </div>
+            <div class="trio-bar-track"><div class="trio-bar-fill" style="width:16.4%"></div></div>
+          </div>
+          <div class="trio-breakdown">
+            <div class="trio-sub"><span class="trio-sub-label">On track</span><span class="trio-sub-val" style="color:var(--intransit)">121</span></div>
+            <div class="trio-sub"><span class="trio-sub-label">Running late</span><span class="trio-sub-val" style="color:var(--delayed)">17</span></div>
+            <div class="trio-sub trio-divider"><span class="trio-sub-label">Pending appt. confirm</span><span class="trio-sub-val" style="color:var(--pending)">32</span></div>
+          </div>
+        </div>
+
+        <div class="trio-card tc-attempted">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div class="trio-icon">⚠️</div>
+            <div><div class="trio-head">Attempted &amp; Undelivered</div><div class="trio-num">47</div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span class="trio-pct">5.6% of total dispatched</span>
+              <span class="trio-pct">+ Failed/RTO: 29</span>
+            </div>
+            <div class="trio-bar-track"><div class="trio-bar-fill" style="width:5.6%"></div></div>
+          </div>
+          <div class="trio-breakdown">
+            <div class="trio-sub"><span class="trio-sub-label">Consignee absent</span><span class="trio-sub-val" style="color:var(--attempted)">19</span></div>
+            <div class="trio-sub"><span class="trio-sub-label">Address / access issue</span><span class="trio-sub-val" style="color:var(--attempted)">15</span></div>
+            <div class="trio-sub"><span class="trio-sub-label">Refused delivery</span><span class="trio-sub-val" style="color:var(--attempted)">13</span></div>
+            <div class="trio-sub trio-divider"><span class="trio-sub-label">Failed / RTO initiated</span><span class="trio-sub-val" style="color:var(--failed)">29</span></div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- APPOINTMENT DATE STRIP — embedded in dashboard -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,0.05);margin-bottom:20px">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-family:var(--font-head);font-weight:700;font-size:14px">Appointment Calendar</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">LRs with scheduled delivery appointments — by carrier</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button onclick="apptGoToday()" style="padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--text2)">Today</button>
+            <button onclick="apptChangePeriod(-7)" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--text2)">‹</button>
+            <span id="appt-period-label" style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);min-width:160px;text-align:center"></span>
+            <button onclick="apptChangePeriod(7)" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--text2)">›</button>
+          </div>
+        </div>
+        <!-- 7-day columns -->
+        <div id="appt-week-grid" style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)"></div>
+        <!-- LR list for selected day -->
+        <div id="appt-day-detail" style="padding:0"></div>
+      </div>
+
+      <!-- MID GRID -->
+      <div class="mid-grid">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Status Distribution</div><div class="card-tag">ALL CHANNELS</div></div>
+          <div class="donut-wrap">
+            <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#e2e6ed" stroke-width="16"/>
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#10b981" stroke-width="16" stroke-dasharray="182 69" stroke-dashoffset="62" transform="rotate(-90 55 55)"/>
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#0f7aff" stroke-width="16" stroke-dasharray="41 210" stroke-dashoffset="-120" transform="rotate(-90 55 55)"/>
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#8b5cf6" stroke-width="16" stroke-dasharray="14 237" stroke-dashoffset="-161" transform="rotate(-90 55 55)"/>
+              <circle cx="55" cy="55" r="40" fill="none" stroke="#ef4444" stroke-width="16" stroke-dasharray="9 242" stroke-dashoffset="-175" transform="rotate(-90 55 55)"/>
+              <text x="55" y="51" text-anchor="middle" fill="#0f1724" font-size="13" font-family="Plus Jakarta Sans" font-weight="800">72.6%</text>
+              <text x="55" y="63" text-anchor="middle" fill="#9aa3b2" font-size="8" font-family="JetBrains Mono">OTIF</text>
+            </svg>
+            <div style="flex:1">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--delivered)"></div><span class="legend-name">Delivered</span><span class="legend-val">612</span><span class="legend-pct">72.6%</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--intransit)"></div><span class="legend-name">In Transit</span><span class="legend-val">138</span><span class="legend-pct">16.4%</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--attempted)"></div><span class="legend-name">Attempted/UD</span><span class="legend-val">47</span><span class="legend-pct">5.6%</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--failed)"></div><span class="legend-name">Failed / RTO</span><span class="legend-val">29</span><span class="legend-pct">3.4%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Partner Delivery Rate</div><div class="card-tag">% DELIVERED</div></div>
+          <div class="bar-chart">
+            <div class="bar-row"><span class="bar-label">Buraq</span><div class="bar-track"><div class="bar-fill" style="width:81%;background:linear-gradient(90deg,#059669,#10b981)"><span class="bar-num">81%</span></div></div><span class="bar-total">389</span></div>
+            <div class="bar-row"><span class="bar-label">Sitics</span><div class="bar-track"><div class="bar-fill" style="width:76%;background:linear-gradient(90deg,#d97706,#f59e0b)"><span class="bar-num">76%</span></div></div><span class="bar-total">95</span></div>
+            <div class="bar-row"><span class="bar-label">Everest</span><div class="bar-track"><div class="bar-fill" style="width:70%;background:linear-gradient(90deg,#6c47ff,#8b5cf6)"><span class="bar-num">70%</span></div></div><span class="bar-total">142</span></div>
+            <div class="bar-row"><span class="bar-label">Rivigo</span><div class="bar-track"><div class="bar-fill" style="width:64%;background:linear-gradient(90deg,#ff6b35,#fb923c)"><span class="bar-num">64%</span></div></div><span class="bar-total">217</span></div>
+            <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+              <div class="kpi-label">Weekly Dispatch Trend</div>
+              <div class="sparkline-area">
+                <div class="spark-bar" style="height:40%"></div><div class="spark-bar" style="height:55%"></div>
+                <div class="spark-bar" style="height:48%"></div><div class="spark-bar" style="height:70%"></div>
+                <div class="spark-bar" style="height:62%"></div><div class="spark-bar" style="height:80%"></div>
+                <div class="spark-bar hi" style="height:88%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Action Required</div><span class="nav-badge" style="margin-left:auto">5</span></div>
+          <div class="alert-list">
+            <div class="alert-item"><div class="alert-icon error">⚠</div><div class="alert-body"><div class="alert-title">3 LRs past delivery SLA</div><div class="alert-meta">Rivigo · HYD warehouse</div></div><div class="alert-time">2h ago</div></div>
+            <div class="alert-item"><div class="alert-icon warn">○</div><div class="alert-body"><div class="alert-title">12 appointments unconfirmed</div><div class="alert-meta">Everest · Bhiwandi</div></div><div class="alert-time">4h ago</div></div>
+            <div class="alert-item"><div class="alert-icon warn">↑</div><div class="alert-body"><div class="alert-title">Rivigo MIS not updated</div><div class="alert-meta">Last sync 2 days ago</div></div><div class="alert-time">2d ago</div></div>
+            <div class="alert-item"><div class="alert-icon ok">✓</div><div class="alert-body"><div class="alert-title">Buraq batch dispatched</div><div class="alert-meta">48 shipments · BADDI</div></div><div class="alert-time">6h ago</div></div>
+            <div class="alert-item"><div class="alert-icon error">✕</div><div class="alert-body"><div class="alert-title">RTO initiated — 4 units</div><div class="alert-meta">Sitics · Qcom channel</div></div><div class="alert-time">1d ago</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LR BOARD ══ -->
+
+    <div id="view-lrboard" class="view-section">
+      <div class="table-section">
+        <div class="table-header">
+          <div class="table-title">LR Tracking Board</div>
+          <div class="table-controls">
+            <input class="search-input" type="text" placeholder="Search LR / consignee…" oninput="filterTable(this.value)">
+            <select class="filter-select" onchange="filterByStatus(this.value)">
+              <option value="">All Status</option>
+              <option>Delivered</option><option>In Transit</option>
+              <option>Delayed</option><option>Attempted/UD</option><option>Failed/RTO</option>
+            </select>
+            <select class="filter-select" onchange="filterByPartnerDrop(this.value)">
+              <option value="">All Partners</option>
+              <option>Everest</option><option>Buraq</option><option>Rivigo</option><option>Sitics</option>
+            </select>
+            <button class="export-btn" onclick="exportCSV()">↓ Export CSV</button>
+          </div>
+        </div>
+        <table class="data-table"><thead><tr>
+          <th>LR NUMBER</th><th>PARTNER</th><th>CHANNEL</th><th>CONSIGNEE</th>
+          <th>WAREHOUSE</th><th>DISPATCH</th><th>APPT DATE</th><th>DELIVERY</th><th>STATUS</th><th></th>
+        </tr></thead><tbody id="lr-tbody"></tbody></table>
+        <div class="table-footer">
+          <span class="page-info" id="page-info">Showing 1–15 of 15 shipments</span>
+          <div class="page-btns" id="page-btns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MIS ══ -->
+
+    <div id="view-mis" class="view-section">
+      <div class="mis-grid">
+        <div class="mis-card updated">
+          <div class="mis-top"><span class="mis-partner-name" style="color:#6c47ff">Everest</span><span class="mis-status live">LIVE</span></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">B2B + FTL · HYD + ECOM</div>
+          <div class="mis-stats">
+            <div><div class="mis-stat-val" style="color:#6c47ff">142</div><div class="mis-stat-label">Total LRs</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delivered)">99</div><div class="mis-stat-label">Delivered</div></div>
+            <div><div class="mis-stat-val" style="color:var(--intransit)">28</div><div class="mis-stat-label">In Transit</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delayed)">15</div><div class="mis-stat-label">Delayed</div></div>
+          </div>
+          <div class="mis-updated"><span style="color:#059669">●</span> Updated 18 Mar 2026</div>
+          <button class="mis-sync-btn" onclick="showToast('Everest MIS synced ✓')">↻ Sync MIS</button>
+        </div>
+        <div class="mis-card updated">
+          <div class="mis-top"><span class="mis-partner-name" style="color:#059669">Buraq</span><span class="mis-status live">LIVE</span></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">B2B · BHIWANDI + BADDI</div>
+          <div class="mis-stats">
+            <div><div class="mis-stat-val" style="color:#059669">389</div><div class="mis-stat-label">Total LRs</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delivered)">315</div><div class="mis-stat-label">Delivered</div></div>
+            <div><div class="mis-stat-val" style="color:var(--intransit)">58</div><div class="mis-stat-label">In Transit</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delayed)">16</div><div class="mis-stat-label">Delayed</div></div>
+          </div>
+          <div class="mis-updated"><span style="color:#059669">●</span> Updated 19 Mar 2026</div>
+          <button class="mis-sync-btn" onclick="showToast('Buraq MIS synced ✓')">↻ Sync MIS</button>
+        </div>
+        <div class="mis-card">
+          <div class="mis-top"><span class="mis-partner-name" style="color:#ff6b35">Rivigo</span><span class="mis-status stale">STALE</span></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">B2B · BHIWANDI + BADDI</div>
+          <div class="mis-stats">
+            <div><div class="mis-stat-val" style="color:#ff6b35">217</div><div class="mis-stat-label">Total LRs</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delivered)">139</div><div class="mis-stat-label">Delivered</div></div>
+            <div><div class="mis-stat-val" style="color:var(--intransit)">41</div><div class="mis-stat-label">In Transit</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delayed)">37</div><div class="mis-stat-label">Delayed</div></div>
+          </div>
+          <div class="mis-updated"><span style="color:var(--delayed)">●</span> Last sync: 17 Mar 2026</div>
+          <button class="mis-sync-btn warn" onclick="showToast('Rivigo MIS update requested')">! Update Overdue</button>
+        </div>
+        <div class="mis-card updated">
+          <div class="mis-top"><span class="mis-partner-name" style="color:#d97706">Sitics</span><span class="mis-status live">LIVE</span></div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">B2B · ECOM / OFFLINE</div>
+          <div class="mis-stats">
+            <div><div class="mis-stat-val" style="color:#d97706">95</div><div class="mis-stat-label">Total LRs</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delivered)">72</div><div class="mis-stat-label">Delivered</div></div>
+            <div><div class="mis-stat-val" style="color:var(--intransit)">14</div><div class="mis-stat-label">In Transit</div></div>
+            <div><div class="mis-stat-val" style="color:var(--delayed)">9</div><div class="mis-stat-label">Delayed</div></div>
+          </div>
+          <div class="mis-updated"><span style="color:#059669">●</span> Updated 19 Mar 2026</div>
+          <button class="mis-sync-btn" onclick="showToast('Sitics MIS synced ✓')">↻ Sync MIS</button>
+        </div>
+      </div>
+      <!-- ── MDM UPLOAD PANEL ── -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 5px rgba(0,0,0,0.04);margin-bottom:20px">
+
+        <!-- Header -->
+        <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-family:var(--font-head);font-weight:700;font-size:15px">Partner MIS Upload — MDM</div>
+            <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Select upload type → Select carrier → Choose file → Upload</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <!-- Upload type toggle -->
+            <div style="display:flex;gap:6px">
+              <button class="upload-type-btn" onclick="setUploadType('warehouse_base',this)"
+                style="padding:7px 14px;background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:7px;font-family:var(--font-mono);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">
+                📦 Warehouse Base File
+              </button>
+              <button class="upload-type-btn" onclick="setUploadType('partner_mis',this)"
+                style="padding:7px 14px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:7px;font-family:var(--font-mono);font-size:11px;cursor:pointer;transition:all .2s">
+                📋 Partner MIS
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Upload type helper -->
+        <div id="upload-type-helper" style="padding:8px 22px;background:rgba(15,122,255,0.04);border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--intransit)">
+          Creates new shipment records. LR numbers become the primary key.
+        </div>
+
+        <!-- Upload Form -->
+        <div style="padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+          <!-- LEFT: Upload controls -->
+          <div>
+            <div style="margin-bottom:16px">
+              <label style="display:block;font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">
+                Step 1 — Select Carrier Partner
+              </label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <div style="position:relative;flex:1">
+                  <select id="mdm-partner-select" onchange="mdmPartnerChanged(this.value)"
+                    style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;appearance:none;cursor:pointer;transition:border-color .2s">
+                    <option value="">— Select partner —</option>
+                    <option value="Everest">Everest</option>
+                    <option value="Buraq">Buraq</option>
+                    <option value="Rivigo">Rivigo</option>
+                    <option value="Sitics">Sitics</option>
+                  </select>
+                  <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);font-size:11px">▾</div>
+                </div>
+                <button onclick="openAddPartnerModal()"
+                  title="Add a new logistics partner"
+                  style="flex-shrink:0;padding:9px 14px;background:#fff;border:1.5px solid var(--border);border-radius:8px;color:var(--accent);font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s;display:flex;align-items:center;gap:6px"
+                  onmouseover="this.style.borderColor='var(--accent)';this.style.background='rgba(15,122,255,0.04)'"
+                  onmouseout="this.style.borderColor='var(--border)';this.style.background='#fff'">
+                  + New Partner
+                </button>
+              </div>
+            </div>
+
+            <div style="margin-bottom:16px">
+              <label style="display:block;font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">
+                Step 2 — Select Report Period
+              </label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div style="position:relative">
+                  <input type="date" id="mdm-date-from" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+                  <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3);margin-top:4px;padding-left:2px">FROM DATE</div>
+                </div>
+                <div style="position:relative">
+                  <input type="date" id="mdm-date-to" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+                  <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3);margin-top:4px;padding-left:2px">TO DATE</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-bottom:20px">
+              <label style="display:block;font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px">
+                Step 3 — Upload MIS File
+              </label>
+              <input type="file" id="mdm-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="mdmFileSelected(this)">
+              <div id="mdm-drop-zone"
+                onclick="document.getElementById('mdm-file-input').click()"
+                ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='rgba(15,122,255,0.03)'"
+                ondragleave="this.style.borderColor='var(--border)';this.style.background=''"
+                ondrop="mdmFileDrop(event)"
+                style="border:2px dashed var(--border);border-radius:10px;padding:24px 18px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)">
+                <div id="mdm-drop-icon" style="font-size:26px;margin-bottom:6px">📂</div>
+                <div id="mdm-drop-label" style="font-family:var(--font-mono);font-size:12px;color:var(--text2);font-weight:500">Click or drag MIS file here</div>
+                <div id="mdm-drop-sub" style="font-size:10px;color:var(--text3);margin-top:4px;font-family:var(--font-mono)">.xlsx · .xls · .csv — max 25 MB</div>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
+              <div id="mdm-validation-msg" style="font-size:11px;font-family:var(--font-mono);color:var(--text3)">Select a partner and file to continue</div>
+              <button id="mdm-upload-btn" onclick="mdmUpload()"
+                style="padding:10px 22px;background:#e2e6ed;border:none;border-radius:8px;color:var(--text3);font-family:var(--font-head);font-weight:700;font-size:13px;cursor:not-allowed;transition:all .25s;white-space:nowrap">
+                Upload MIS ↑
+              </button>
+            </div>
+          </div>
+
+          <!-- RIGHT: Partner info card + column map -->
+          <div>
+            <!-- Partner info preview -->
+            <div id="mdm-partner-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;display:none">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                <div id="mdm-info-dot" style="width:10px;height:10px;border-radius:50%"></div>
+                <div id="mdm-info-name" style="font-family:var(--font-head);font-weight:800;font-size:16px"></div>
+                <div id="mdm-info-status" style="margin-left:auto;font-size:9px;font-family:var(--font-mono);padding:3px 9px;border-radius:10px;letter-spacing:1px;text-transform:uppercase"></div>
+              </div>
+              <div id="mdm-info-meta" style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-bottom:12px;line-height:1.8"></div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                <div style="text-align:center;background:#fff;border-radius:8px;padding:8px 4px;border:1px solid var(--border)">
+                  <div id="mdm-stat-total" style="font-family:var(--font-head);font-weight:800;font-size:18px"></div>
+                  <div style="font-size:8px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">TOTAL</div>
+                </div>
+                <div style="text-align:center;background:#fff;border-radius:8px;padding:8px 4px;border:1px solid var(--border)">
+                  <div id="mdm-stat-del" style="font-family:var(--font-head);font-weight:800;font-size:18px;color:var(--delivered)"></div>
+                  <div style="font-size:8px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">DELIVERED</div>
+                </div>
+                <div style="text-align:center;background:#fff;border-radius:8px;padding:8px 4px;border:1px solid var(--border)">
+                  <div id="mdm-stat-tr" style="font-family:var(--font-head);font-weight:800;font-size:18px;color:var(--intransit)"></div>
+                  <div style="font-size:8px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">IN TRANSIT</div>
+                </div>
+                <div style="text-align:center;background:#fff;border-radius:8px;padding:8px 4px;border:1px solid var(--border)">
+                  <div id="mdm-stat-dl" style="font-family:var(--font-head);font-weight:800;font-size:18px;color:var(--delayed)"></div>
+                  <div style="font-size:8px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">DELAYED</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Expected column map -->
+            <div id="mdm-col-map" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;display:none">
+              <div style="font-size:10px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:10px">Expected MIS Columns</div>
+              <div id="mdm-col-list" style="display:flex;flex-direction:column;gap:5px"></div>
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;font-family:var(--font-mono);color:var(--text3)">
+                ℹ Column names are auto-mapped even if slightly different
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div id="mdm-empty-state" style="background:var(--surface2);border:1px dashed var(--border);border-radius:10px;padding:32px;text-align:center">
+              <div style="font-size:28px;margin-bottom:8px">🔍</div>
+              <div style="font-family:var(--font-mono);font-size:12px;color:var(--text3)">Select a partner to see<br>their MIS spec & status</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── UPLOAD HISTORY ── -->
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 5px rgba(0,0,0,0.04)">
+        <div style="padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-family:var(--font-head);font-weight:700;font-size:14px">Upload History</div>
+          <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3)">Last 10 uploads across all partners</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse" id="upload-history-table">
+          <thead>
+            <tr>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">PARTNER</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">TYPE</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">FILE NAME</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">ROWS</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">UPLOADED BY</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">DATE</th>
+              <th style="padding:9px 16px;text-align:left;font-size:9px;font-family:var(--font-mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2)">STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="upload-history-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ TIMELINE ══ -->
+
+    <div id="view-timeline" class="view-section">
+      <div class="tl-grid">
+
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div><div class="tl-card-title">LR# EVR-2026-0847</div><div class="tl-card-sub">Everest · Bhiwandi → Udaan DC · Ecom</div></div>
+            <span class="status-pill s-transit">In Transit</span>
+          </div>
+          <div class="tl-body">
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">Order Dispatched</div><div class="tl-detail">Bhiwandi WH · 15 Mar 2026 · 09:42</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">LR Generated</div><div class="tl-detail">LR# EVR-2026-0847 assigned to carrier</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">Intermediate Hub — Pune</div><div class="tl-detail">16 Mar 2026 · 14:18</div></div></div>
+            <div class="tl-step"><div class="tl-dot active">→</div><div class="tl-content"><div class="tl-title">Out for Delivery</div><div class="tl-detail blue">Last mile in progress · ETA 20 Mar 2026</div></div></div>
+            <div class="tl-step"><div class="tl-dot waiting">○</div><div class="tl-content"><div class="tl-title" style="color:var(--text3)">Awaiting Delivery</div><div class="tl-detail">Expected 20 Mar 2026</div></div></div>
+          </div>
+        </div>
+
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div><div class="tl-card-title">LR# RVG-2026-1104</div><div class="tl-card-sub">Rivigo · Baddi → DMart Pune · Offline</div></div>
+            <span class="status-pill s-delayed">Delayed</span>
+          </div>
+          <div class="tl-body">
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">Order Dispatched</div><div class="tl-detail">Baddi WH · 13 Mar 2026 · 11:00</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">LR Generated</div><div class="tl-detail">LR# RVG-2026-1104 · PTL mode</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">In Transit — Delhi Hub</div><div class="tl-detail">15 Mar 2026 · 08:30</div></div></div>
+            <div class="tl-step"><div class="tl-dot error">!</div><div class="tl-content"><div class="tl-title" style="color:var(--failed)">SLA Missed — Delayed</div><div class="tl-detail red">Expected 17 Mar · Rescheduled to 21 Mar</div></div></div>
+            <div class="tl-step"><div class="tl-dot waiting">○</div><div class="tl-content"><div class="tl-title" style="color:var(--text3)">Delivery Pending</div><div class="tl-detail">New ETA: 21 Mar 2026</div></div></div>
+          </div>
+        </div>
+
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div><div class="tl-card-title">LR# BRQ-2026-0302</div><div class="tl-card-sub">Buraq · Bhiwandi → Zepto Hub · Ecom</div></div>
+            <span class="status-pill s-delivered">Delivered</span>
+          </div>
+          <div class="tl-body">
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">Order Dispatched</div><div class="tl-detail">Bhiwandi WH · 16 Mar 2026 · 10:00</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">LR Generated</div><div class="tl-detail">LR# BRQ-2026-0302 assigned</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">Appointment Confirmed</div><div class="tl-detail">Delivery slot: 18 Mar · 11:00–13:00</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title" style="color:var(--delivered)">Delivered Successfully</div><div class="tl-detail">18 Mar 2026 · 12:24 · POD received</div></div></div>
+          </div>
+        </div>
+
+        <div class="tl-card">
+          <div class="tl-card-head">
+            <div><div class="tl-card-title">LR# RVG-2026-1129</div><div class="tl-card-sub">Rivigo · Bhiwandi → Nature's Basket · Offline</div></div>
+            <span class="status-pill s-attempted">Attempted/UD</span>
+          </div>
+          <div class="tl-body">
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">Order Dispatched</div><div class="tl-detail">Bhiwandi WH · 15 Mar 2026 · 09:00</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">LR Generated</div><div class="tl-detail">LR# RVG-2026-1129 · FTL</div></div></div>
+            <div class="tl-step"><div class="tl-dot done">✓</div><div class="tl-content"><div class="tl-title">Delivery Attempted</div><div class="tl-detail">17 Mar 2026 · 15:30 — Consignee absent</div></div></div>
+            <div class="tl-step"><div class="tl-dot warn">!</div><div class="tl-content"><div class="tl-title" style="color:var(--attempted)">Undelivered — Re-attempt Pending</div><div class="tl-detail purple">2nd attempt scheduled · 21 Mar 2026</div></div></div>
+            <div class="tl-step"><div class="tl-dot waiting">○</div><div class="tl-content"><div class="tl-title" style="color:var(--text3)">Awaiting Re-delivery</div><div class="tl-detail">RTO risk if 2nd attempt fails</div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+    <!-- ══ APPOINTMENT TRACKER ══ -->
+
+    <div id="view-appointments" class="view-section">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div style="font-family:var(--font-head);font-weight:800;font-size:18px">Appointment Tracker</div>
+          <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">All LRs with scheduled appointment dates — carrier-wise tracking</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select id="appt-partner-filter" class="filter-select" onchange="renderApptView()">
+            <option value="">All Carriers</option>
+          </select>
+          <select id="appt-status-filter" class="filter-select" onchange="renderApptView()">
+            <option value="">All Status</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="today">Today</option>
+            <option value="missed">Missed / Overdue</option>
+            <option value="delivered">Delivered</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div class="kpi-card" style="border-top:3px solid var(--accent)">
+          <div class="kpi-label">Total Appointments</div>
+          <div class="kpi-value" id="akpi-total" style="color:var(--accent)">—</div>
+          <div class="kpi-delta">With confirmed appt. date</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--delivered)">
+          <div class="kpi-label">Today's Appointments</div>
+          <div class="kpi-value" id="akpi-today" style="color:var(--delivered)">—</div>
+          <div class="kpi-delta">Require action now</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--pending)">
+          <div class="kpi-label">Upcoming (7 days)</div>
+          <div class="kpi-value" id="akpi-upcoming" style="color:var(--pending)">—</div>
+          <div class="kpi-delta">Scheduled ahead</div>
+        </div>
+        <div class="kpi-card" style="border-top:3px solid var(--failed)">
+          <div class="kpi-label">Missed / Overdue</div>
+          <div class="kpi-value" id="akpi-missed" style="color:var(--failed)">—</div>
+          <div class="kpi-delta">Appt passed — not delivered</div>
+        </div>
+      </div>
+
+      <!-- Carrier breakdown cards -->
+      <div id="appt-carrier-breakdown" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
+
+      <!-- Full appointment table -->
+      <div class="table-section">
+        <div class="table-header">
+          <div class="table-title">All Appointment-Scheduled LRs</div>
+          <div class="table-controls">
+            <input class="search-input" id="appt-search" type="text" placeholder="Search LR / consignee…" oninput="renderApptView()" style="width:200px">
+            <button class="export-btn" onclick="exportApptCSV()">↓ Export</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead><tr>
+            <th>LR NUMBER</th>
+            <th>CARRIER</th>
+            <th>CONSIGNEE</th>
+            <th>CHANNEL</th>
+            <th>WAREHOUSE</th>
+            <th>DISPATCH DATE</th>
+            <th>APPT DATE</th>
+            <th>DAYS TO APPT</th>
+            <th>CURRENT STATUS</th>
+            <th>APPT STATUS</th>
+          </tr></thead>
+          <tbody id="appt-tbody">
+            <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Loading appointment data…</td></tr>
+          </tbody>
+        </table>
+        <div class="table-footer">
+          <span id="appt-table-info" class="page-info">—</span>
+        </div>
+      </div>
+    </div>
+
+<!-- SERVICEABILITY MASTER VIEW -->
+
+<div id="view-serviceability" class="view-section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:18px">Serviceability Master</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Origin → Destination lanes with carrier SLA commitments</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <select id="svc-warehouse-filter" class="filter-select" onchange="filterServiceability()">
+        <option value="">All Warehouses</option>
+        <option>Bhiwandi</option><option>Baddi</option><option>Hyderabad</option>
+      </select>
+      <select id="svc-partner-filter" class="filter-select" onchange="filterServiceability()">
+        <option value="">All Carriers</option>
+      </select>
+      <select id="svc-region-filter" class="filter-select" onchange="filterServiceability()">
+        <option value="">All Regions</option>
+        <option>North</option><option>South</option><option>East</option><option>West</option><option>Central</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+    <div class="kpi-card" style="border-top:3px solid var(--accent3)">
+      <div class="kpi-label">Total Lanes</div>
+      <div class="kpi-value" id="skpi-total" style="color:var(--accent3)">—</div>
+      <div class="kpi-delta">Origin→Destination pairs</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--delivered)">
+      <div class="kpi-label">Avg SLA Days</div>
+      <div class="kpi-value" id="skpi-avg" style="color:var(--delivered)">—</div>
+      <div class="kpi-delta">Committed transit days</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--accent)">
+      <div class="kpi-label">Active Carriers</div>
+      <div class="kpi-value" id="skpi-carriers" style="color:var(--accent)">—</div>
+      <div class="kpi-delta">On live lanes</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--pending)">
+      <div class="kpi-label">Warehouses</div>
+      <div class="kpi-value" id="skpi-warehouses" style="color:var(--pending)">—</div>
+      <div class="kpi-delta">Origin points</div>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <div class="table-header">
+      <div class="table-title">Lane SLA Matrix</div>
+      <div class="table-controls">
+        <input class="search-input" id="svc-search" type="text" placeholder="Search city, pincode…" oninput="filterServiceability()" style="width:200px">
+        <button class="export-btn" onclick="exportSvcCSV()">↓ Export</button>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead><tr>
+        <th>ORIGIN WH</th><th>ORIGIN PINCODE</th><th>DEST CITY</th>
+        <th>DEST PINCODE</th><th>REGION</th><th>CARRIER</th>
+        <th>SERVICE TYPE</th><th>CHANNEL</th>
+        <th>COMMITTED SLA</th><th>STANDARD DAYS</th><th>PRIORITY</th>
+      </tr></thead>
+      <tbody id="svc-tbody">
+        <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Loading serviceability data…</td></tr>
+      </tbody>
+    </table>
+    <div class="table-footer">
+      <span id="svc-table-info" class="page-info">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- USERS VIEW -->
+
+<div id="view-users" class="view-section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:18px">User Management</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Control who can view, upload, or administer Mosaic Move — Admin access only</div>
+    </div>
+    <button id="invite-user-btn" onclick="openInviteUserModal()" style="padding:9px 18px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-family:var(--font-head);font-weight:700;font-size:13px;cursor:pointer">+ Invite User</button>
+  </div>
+
+  <!-- Role legend -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid var(--failed);box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="font-family:var(--font-head);font-weight:700;font-size:14px;margin-bottom:6px">👑 Admin</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">Full access. Can add/remove users, modify partner MDM, consignees, serviceability. Can delete records. Currently: <strong>you only</strong>.</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="font-family:var(--font-head);font-weight:700;font-size:14px;margin-bottom:6px">📤 Ops Upload</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">Can upload warehouse base files and partner MIS. Can view all data. Cannot delete records or manage users. Assigned to: Shailendra, Nikhil.</div>
+    </div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid var(--delivered);box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="font-family:var(--font-head);font-weight:700;font-size:14px;margin-bottom:6px">👁 Viewer</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">Read-only access. Can view dashboard, LR board, and all reports. Cannot upload files or modify any data. Assigned to: Manan, Vipul.</div>
+    </div>
+  </div>
+
+  <!-- Users table -->
+  <div class="table-section">
+    <table class="data-table">
+      <thead><tr>
+        <th>NAME</th><th>EMAIL</th><th>ROLE</th><th>DEPARTMENT</th>
+        <th>BRAND ACCESS</th><th>REPORTS TO</th><th>STATUS</th><th>LAST LOGIN</th><th></th>
+      </tr></thead>
+      <tbody id="users-tbody">
+        <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Loading users…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- INVITE USER MODAL -->
+<div class="modal-overlay" id="invite-user-modal" onclick="if(event.target===this)closeInviteUserModal()">
+  <div class="modal" style="width:560px">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Invite User to Mosaic Move</div>
+        <div style="font-size:10px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Only @mosaicwellness.in accounts can be invited</div>
+      </div>
+      <button class="modal-close" onclick="closeInviteUserModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="form-row"><label class="form-label">Full Name *</label><input class="form-input" id="inv-name" type="text" placeholder="e.g. Riya Kaul"></div>
+        <div class="form-row"><label class="form-label">Email * (@mosaicwellness.in)</label><input class="form-input" id="inv-email" type="email" placeholder="name@mosaicwellness.in"></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="form-row"><label class="form-label">Role *</label>
+          <select class="form-select" id="inv-role">
+            <option value="">— Select role —</option>
+            <option value="ops_upload">Ops Upload — Can upload MIS files</option>
+            <option value="viewer">Viewer — Read only</option>
+          </select>
+        </div>
+        <div class="form-row"><label class="form-label">Department</label><input class="form-input" id="inv-dept" type="text" placeholder="e.g. B2B Logistics"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:14px">
+        <label class="form-label">Brand Access</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label id="inv-brand-MM" onclick="toggleInvBrand('MM',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-MM">☐</span> MM</label>
+          <label id="inv-brand-BB" onclick="toggleInvBrand('BB',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-BB">☐</span> BB</label>
+          <label id="inv-brand-LJ" onclick="toggleInvBrand('LJ',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-LJ">☐</span> LJ</label>
+          <label id="inv-brand-RL" onclick="toggleInvBrand('RL',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-RL">☐</span> RL</label>
+          <label id="inv-brand-OWN" onclick="toggleInvBrand('OWN',this)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text2);transition:all .15s"><span id="inv-bchk-OWN">☐</span> OWN</label>
+        </div>
+        <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3);margin-top:5px">Leave blank to grant access to all brands</div>
+      </div>
+      <div style="background:rgba(15,122,255,0.05);border:1px solid rgba(15,122,255,0.15);border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:11px;font-family:var(--font-mono);color:var(--text2);line-height:1.7">
+        ℹ The user will sign in using their <strong>@mosaicwellness.in</strong> Google account. Their role and access take effect immediately on first login.
+      </div>
+      <button class="submit-btn" onclick="saveInviteUser()">Save &amp; Activate User →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONSIGNEE MASTER VIEW -->
+
+<div id="view-consignees" class="view-section">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div>
+      <div style="font-family:var(--font-head);font-weight:800;font-size:18px;color:var(--text)">Consignee Master</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--text3);margin-top:2px">Retailer &amp; customer database — linked to every LR shipment</div>
+    </div>
+    <button onclick="openAddConsigneeModal()" style="padding:9px 18px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-family:var(--font-head);font-weight:700;font-size:13px;cursor:pointer">+ Add Consignee</button>
+  </div>
+
+  <!-- KPI strip -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+    <div class="kpi-card" style="border-top:3px solid var(--accent3)">
+      <div class="kpi-label">Total Consignees</div>
+      <div class="kpi-value" id="ckpi-total" style="color:var(--accent3)">—</div>
+      <div class="kpi-delta">Across all channels</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--delivered)">
+      <div class="kpi-label">Modern Trade</div>
+      <div class="kpi-value" id="ckpi-mt" style="color:var(--delivered)">—</div>
+      <div class="kpi-delta">DMart, Reliance etc.</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--accent)">
+      <div class="kpi-label">Ecom / Qcom</div>
+      <div class="kpi-value" id="ckpi-ecom" style="color:var(--accent)">—</div>
+      <div class="kpi-delta">Amazon, Zepto etc.</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--attempted)">
+      <div class="kpi-label">Wholesale</div>
+      <div class="kpi-value" id="ckpi-wholesale" style="color:var(--attempted)">—</div>
+      <div class="kpi-delta">Metro, Costco etc.</div>
+    </div>
+    <div class="kpi-card" style="border-top:3px solid var(--pending)">
+      <div class="kpi-label">Appt. Required</div>
+      <div class="kpi-value" id="ckpi-appt" style="color:var(--pending)">—</div>
+      <div class="kpi-delta">Need slot booking</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:10px;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+    <input id="consignee-search" class="search-input" type="text" placeholder="Search name, city, code…" oninput="filterConsignees()" style="width:220px">
+    <select id="consignee-type-filter" class="filter-select" onchange="filterConsignees()">
+      <option value="">All Types</option>
+      <option>Modern Trade</option><option>Ecom Marketplace</option>
+      <option>Quick Commerce</option><option>General Trade</option>
+      <option>Wholesale</option><option>Pharmacy</option><option>Other</option>
+    </select>
+    <select id="consignee-channel-filter" class="filter-select" onchange="filterConsignees()">
+      <option value="">All Channels</option>
+      <option>Ecom/Qcom</option><option>Offline</option><option>Both</option>
+    </select>
+    <select id="consignee-region-filter" class="filter-select" onchange="filterConsignees()">
+      <option value="">All Regions</option>
+      <option>North</option><option>South</option><option>East</option>
+      <option>West</option><option>Central</option>
+    </select>
+    <div style="margin-left:auto;font-size:11px;font-family:var(--font-mono);color:var(--text3)" id="consignee-count-label"></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-section">
+    <table class="data-table">
+      <thead><tr>
+        <th>CONSIGNEE NAME</th><th>CODE</th><th>TYPE</th><th>CHANNEL</th>
+        <th>CITY</th><th>REGION</th><th>APPT</th><th>LEAD</th>
+        <th>SHIPMENTS</th><th>DEL. RATE</th><th>DELAYED</th><th>STATUS</th><th></th>
+      </tr></thead>
+      <tbody id="consignee-tbody">
+        <tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">Sign in to load consignees</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+  </div>
+</div>
+
+</div><!-- end app-shell -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="lr-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Add / Update LR Entry</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">LR Number</label><input class="form-input" type="text" placeholder="e.g. BRQ-2026-0291"></div>
+        <div class="form-row"><label class="form-label">Shipping Partner</label><select class="form-select"><option>Everest</option><option>Buraq</option><option>Rivigo</option><option>Sitics</option></select></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">Channel</label><select class="form-select"><option>Ecom/Qcom</option><option>Offline</option><option>FTL</option></select></div>
+        <div class="form-row"><label class="form-label">Warehouse</label><select class="form-select"><option>Bhiwandi</option><option>Baddi</option><option>Hyderabad</option></select></div>
+      </div>
+      <div class="form-row"><label class="form-label">Consignee Name</label><input class="form-input" type="text" placeholder="Retailer / B2B customer name"></div>
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">Dispatch Date</label><input class="form-input" type="date"></div>
+        <div class="form-row"><label class="form-label">Appointment Date</label><input class="form-input" type="date"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row"><label class="form-label">Expected Delivery</label><input class="form-input" type="date"></div>
+        <div class="form-row"><label class="form-label">Status</label><select class="form-select"><option>In Transit</option><option>Delivered</option><option>Delayed</option><option>Attempted/UD</option><option>Failed/RTO</option></select></div>
+      </div>
+      <div class="form-row"><label class="form-label">Remarks</label><input class="form-input" type="text" placeholder="Optional notes"></div>
+      <button class="submit-btn" onclick="submitLR()">Save LR Entry →</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end app-shell -->
+
+
+<div class="toast" id="toast"><span class="toast-icon">✓</span><span id="toast-msg">Done</span></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// SUPABASE — Live Data Layer
+// ══════════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://tomqqnslqgokhdxqvzfs.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvbXFxbnNscWdva2hkeHF2emZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MTc3NTUsImV4cCI6MjA5MDA5Mzc1NX0.dWBoRn-6P_RITicnXaE4Mc6KICKRQSPvYg1y0ErokBI';
+// Wait for Supabase SDK to be ready
+let db;
+function initSupabase() {
+  if (window.supabase && window.supabase.createClient) {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    return true;
+  }
+  return false;
+}
+
+// ── In-memory state (loaded from DB) ──
+let shipments    = [];
+let partners     = [];
+let uploadHistory = [];
+let dbStats      = { total:0, delivered:0, in_transit:0, delayed:0, attempted:0, failed:0, pending:0 };
+
+// ── Pagination & filter state ──
+const PAGE_SIZE = 10;
+let currentPage  = 1;
+let activePartner = 'all';
+let activeChannel = 'all';
+let searchQ = '';
+let statusQ = '';
+let partnerDropQ = '';
+
+// loadAllData defined below with consignee support
+
+async function loadPartners() {
+  const { data, error } = await db.from('partners').select('*').eq('status','active').order('name');
+  if (error) throw error;
+  partners = data || [];
+  rebuildPartnerSidebar();
+  rebuildPartnerDropdowns();
+}
+
+
+async function uploadPartnerMIS(file, partnerName, uploadedBy) {
+  const workbook = XLSX.read(await file.arrayBuffer(), { type:'array', cellDates:true });
+  const ws       = workbook.Sheets[workbook.SheetNames[0]];
+  const rows     = XLSX.utils.sheet_to_json(ws, { defval:'' });
+  if (!rows.length) throw new Error('File is empty');
+
+  const partner  = partners.find(p => p.name === partnerName);
+  const partnerId = partner?.id || null;
+
+  // Auto-map the LR column name
+  const COLUMN_MAPS = {
+    Everest: ['LR Number','LR No','lr_number','AWB'],
+    Buraq:   ['LR No.','LR Number','AWB No'],
+    Rivigo:  ['Docket No.','Docket No','LR Number','AWB'],
+    Sitics:  ['AWB / LR Number','AWB','LR Number'],
+    Infinite:['AWB No.','AWB','LR Number'],
+    AYS:     ['Consignment No.','LR Number','AWB'],
+    IWWE:    ['Shipment ID','LR Number','AWB'],
+  };
+  const candidates = COLUMN_MAPS[partnerName] || ['LR Number','AWB','Docket No.'];
+  const headers    = Object.keys(rows[0]);
+  const lrCol      = candidates.find(col => headers.some(h => h.trim().toLowerCase() === col.toLowerCase()))
+                  || headers.find(h => /lr|awb|docket|consignment|shipment/i.test(h));
+  if (!lrCol) throw new Error('Could not find LR/AWB column. Headers: ' + headers.join(', '));
+
+  // Status column mapping
+  const statusCol = headers.find(h => /status|delivery.*status|del.*status/i.test(h));
+  const dateCol   = headers.find(h => /delivery.*date|del.*date|actual.*date/i.test(h));
+  const remarkCol = headers.find(h => /remark|comment|note|reason/i.test(h));
+
+  // Create upload record
+  const { data: uploadRec, error: upErr } = await db.from('uploads').insert({
+    upload_type: 'partner_mis', partner_id: partnerId,
+    filename: file.name, row_count: rows.length,
+    uploaded_by: uploadedBy, status: 'processing'
+  }).select().single();
+  if (upErr) throw upErr;
+
+  let matched = 0, unmatched = 0;
+  const misRows = [], unmatchedRows = [];
+
+  for (const row of rows) {
+    const lr = String(row[lrCol] || '').trim();
+    if (!lr) continue;
+
+    // Check if this LR exists in shipments
+    const { data: existing } = await db.from('shipments').select('lr_number').eq('lr_number', lr).single();
+
+    if (existing) {
+      // Normalise delivery status
+      const rawStatus = String(row[statusCol] || '').trim();
+      const statusMap  = {
+        'delivered':'Delivered','del':'Delivered',
+        'in transit':'In Transit','intransit':'In Transit','out for delivery':'In Transit',
+        'delayed':'Delayed','late':'Delayed',
+        'attempted':'Attempted/UD','undelivered':'Attempted/UD',
+        'rto':'Failed/RTO','returned':'Failed/RTO','failed':'Failed/RTO',
+      };
+      const normStatus = statusMap[rawStatus.toLowerCase()] || 'In Transit';
+
+      misRows.push({
+        lr_number: lr, partner_id: partnerId, brand: mdmSelectedBrand || null,
+        delivery_status: normStatus,
+        actual_delivery: dateCol && row[dateCol] ? row[dateCol] : null,
+        remarks: remarkCol ? String(row[remarkCol]||'').trim() : null,
+        mis_upload_id: uploadRec.id, match_status: 'matched',
+        updated_by: uploadedBy,
+      });
+      matched++;
+    } else {
+      unmatchedRows.push({
+        lr_number: lr, partner_id: partnerId,
+        mis_upload_id: uploadRec.id,
+        raw_row: row,
+      });
+      unmatched++;
+    }
+  }
+
+  // Batch insert
+  if (misRows.length) {
+    const { error: misErr } = await db.from('mis_updates').insert(misRows);
+    if (misErr) throw misErr;
+  }
+  if (unmatchedRows.length) {
+    await db.from('unmatched_lrs').insert(unmatchedRows);
+  }
+
+  // Update upload record
+  await db.from('uploads').update({
+    matched_count: matched, unmatched_count: unmatched, status: 'complete'
+  }).eq('id', uploadRec.id);
+
+  return { matched, unmatched, total: rows.length };
+}
+
+
+async function loadShipments() {
+  const { data, error } = await db
+    .from('shipment_status_view')
+    .select('*')
+    .order('dispatch_date', { ascending: false });
+  if (error) throw error;
+  // Normalise to match existing UI shape
+  shipments = (data || []).map(r => ({
+    lr:        r.lr_number,
+    partner:   r.partner_name,
+    pClass:    'p-' + (r.partner_name||'').toLowerCase(),
+    channel:   r.channel,
+    consignee: r.consignee,
+    wh:        r.warehouse,
+    dispatch:  r.dispatch_date   ? fmtDate(r.dispatch_date)   : '—',
+    appt:      r.appt_date       ? fmtDate(r.appt_date)       : '—',
+    delivery:  r.actual_delivery ? fmtDate(r.actual_delivery) : '—',
+    status:    r.delivery_status || 'Pending',
+    sClass:    statusClass(r.delivery_status),
+    color:     r.partner_color
+  }));
+  renderTable();
+}
+
+async function loadStats() {
+  const { data, error } = await db.rpc('get_dashboard_stats');
+  if (error) { console.warn('Stats error:', error); return; }
+  if (data) {
+    dbStats = data;
+    updateKpiCards();
+    updateTrioCards();
+  }
+}
+
+async function loadUploadHistory() {
+  const { data, error } = await db
+    .from('uploads')
+    .select('*, partners(name)')
+    .order('uploaded_at', { ascending: false })
+    .limit(10);
+  if (error) { console.warn('Upload history error:', error); return; }
+  uploadHistory = data || [];
+  renderUploadHistory();
+}
+
+// ── REALTIME subscription on shipments ────────────────
+function subscribeRealtime() {
+  db.channel('shipments-changes')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'shipments' },
+      () => { loadShipments(); loadStats(); }
+    )
+    .subscribe();
+}
+
+// ── HELPER FUNCTIONS ──────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function statusClass(s) {
+  const map = {
+    'Delivered':'s-delivered', 'In Transit':'s-transit',
+    'Delayed':'s-delayed', 'Failed/RTO':'s-failed',
+    'Attempted/UD':'s-attempted', 'Pending':'s-pending'
+  };
+  return map[s] || 's-pending';
+}
+
+function showDbStatus(state) {
+  const dot = document.querySelector('.sync-dot');
+  const btn = document.querySelector('.sync-btn');
+  if (!dot || !btn) return;
+  if (state === 'loading') {
+    dot.style.background = 'var(--pending)';
+    btn.title = 'Loading data…';
+  } else if (state === 'live') {
+    dot.style.background = 'var(--delivered)';
+    btn.title = 'Live — connected to Supabase';
+  } else {
+    dot.style.background = 'var(--failed)';
+    btn.title = 'Database connection error';
+  }
+}
+
+function updateKpiCards() {
+  const map = {
+    'k1': dbStats.total,
+    'k2': dbStats.delivered,
+    'k3': dbStats.in_transit,
+    'k4': dbStats.attempted,
+    'k5': dbStats.delayed,
+    'k6': dbStats.failed
+  };
+  document.querySelectorAll('.kpi-card').forEach((card, i) => {
+    const key = ['k1','k2','k3','k4','k5','k6'][i];
+    const valEl = card.querySelector('.kpi-value');
+    if (valEl && map[key] !== undefined) valEl.textContent = map[key];
+  });
+}
+
+function updateTrioCards() {
+  const t = dbStats.total || 1;
+  const setTrio = (sel, val) => {
+    const el = document.querySelector(sel);
+    if (el) el.textContent = val;
+  };
+  setTrio('.tc-delivered .trio-num', dbStats.delivered || 0);
+  setTrio('.tc-transit .trio-num',   dbStats.in_transit || 0);
+  setTrio('.tc-attempted .trio-num', (dbStats.attempted || 0));
+
+  // Update progress bars
+  const setBar = (sel, pct) => {
+    const el = document.querySelector(sel);
+    if (el) el.style.width = pct + '%';
+  };
+  setBar('.tc-delivered .trio-bar-fill', ((dbStats.delivered||0)/t*100).toFixed(1));
+  setBar('.tc-transit .trio-bar-fill',   ((dbStats.in_transit||0)/t*100).toFixed(1));
+  setBar('.tc-attempted .trio-bar-fill', ((dbStats.attempted||0)/t*100).toFixed(1));
+}
+
+function rebuildPartnerSidebar() {
+  const section = document.querySelector('.partner-section');
+  if (!section) return;
+  // Keep label, remove old pills
+  const label = section.querySelector('.partner-label');
+  section.innerHTML = '';
+  if (label) section.appendChild(label);
+
+  partners.forEach(p => {
+    const pill = document.createElement('div');
+    pill.className = 'partner-pill';
+    pill.id = 'pill-' + p.name.toLowerCase();
+    pill.onclick = function() { setPartner(p.name, this); };
+    pill.innerHTML = `
+      <div class="partner-dot" style="background:${p.color}"></div>
+      <span class="partner-pname">${p.name}</span>
+      <span class="partner-count">${
+        shipments.filter(s => s.partner === p.name).length
+      }</span>`;
+    section.appendChild(pill);
+  });
+}
+
+function rebuildPartnerDropdowns() {
+  // MIS upload dropdown
+  const sel = document.getElementById('mdm-partner-select');
+  if (sel) {
+    const current = sel.value;
+    // Keep first placeholder option
+    while (sel.options.length > 1) sel.remove(1);
+    partners.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name; opt.textContent = p.name;
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  }
+  // LR board filter
+  const pDrop = document.querySelectorAll('.filter-select')[1];
+  if (pDrop) {
+    while (pDrop.options.length > 1) pDrop.remove(1);
+    partners.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.name; opt.textContent = p.name;
+      pDrop.appendChild(opt);
+    });
+  }
+}
+
+// ── TABLE RENDERING ────────────────────────────────────
+function getFiltered() {
+  return shipments.filter(r => {
+    const mp  = activePartner === 'all' || r.partner === activePartner;
+    const mc  = activeChannel === 'all'
+      || (activeChannel === 'ecom'    && r.channel.toLowerCase().includes('ecom'))
+      || (activeChannel === 'offline' && r.channel.toLowerCase() === 'offline');
+    const ms  = !searchQ
+      || r.lr.toLowerCase().includes(searchQ)
+      || (r.consignee||'').toLowerCase().includes(searchQ)
+      || (r.partner||'').toLowerCase().includes(searchQ);
+    const mst = !statusQ || r.status.toLowerCase().includes(statusQ.toLowerCase());
+    const mpd = !partnerDropQ || r.partner === partnerDropQ;
+    const mb  = activeBrand === 'all' || !r.brand || r.brand === activeBrand || r.brand === 'All';
+    return mp && mc && ms && mst && mpd && mb;
+  });
+}
+
+function renderTable() {
+  const data = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = 1;
+  const start    = (currentPage - 1) * PAGE_SIZE;
+  const end      = Math.min(start + PAGE_SIZE, data.length);
+  const pageData = data.slice(start, end);
+
+  const tbody = document.getElementById('lr-tbody');
+  if (!tbody) return;
+
+  if (pageData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${shipments.length === 0
+        ? '⬆ No shipments yet — upload a Warehouse Base File to get started'
+        : '🔍 No shipments match the current filters'}
+    </td></tr>`;
+    document.getElementById('page-info').textContent = 'No results';
+    const pb = document.getElementById('page-btns');
+    if (pb) pb.style.display = 'none';
+    return;
+  }
+
+  tbody.innerHTML = pageData.map(r => `
+    <tr>
+      <td><span class="lr-code">${r.lr}</span></td>
+      <td><span class="partner-badge p-${(r.partner||'').toLowerCase()}">${r.partner}</span></td>
+      <td><span class="channel-tag">${r.channel}</span></td>
+      <td style="color:var(--text);font-weight:500">${r.consignee}</td>
+      <td><span class="channel-tag">${r.wh}</span></td>
+      <td><span class="date-cell">${r.dispatch}</span></td>
+      <td><span class="date-cell">${r.appt}</span></td>
+      <td><span class="date-cell ${r.status==='Delayed'?'overdue':''}">${r.delivery}</span></td>
+      <td><span class="status-pill ${r.sClass}">${r.status}</span></td>
+      <td><button class="action-btn" onclick="showToast('${r.lr} opened')">View</button></td>
+    </tr>`).join('');
+
+  document.getElementById('page-info').textContent =
+    `Showing ${start+1}–${end} of ${data.length} shipments`;
+
+  const paginationEl = document.getElementById('page-btns');
+  if (!paginationEl) return;
+  if (totalPages <= 1) { paginationEl.style.display = 'none'; return; }
+  paginationEl.style.display = 'flex';
+
+  let btns = `<button class="page-btn" onclick="goToPage(${currentPage-1})"
+    ${currentPage===1?'disabled style="opacity:.4;cursor:not-allowed"':''}>‹ Prev</button>`;
+  let pages = [];
+  if (totalPages <= 5) pages = Array.from({length:totalPages},(_,i)=>i+1);
+  else if (currentPage <= 3) pages = [1,2,3,4,'...',totalPages];
+  else if (currentPage >= totalPages-2) pages = [1,'...',totalPages-3,totalPages-2,totalPages-1,totalPages];
+  else pages = [1,'...',currentPage-1,currentPage,currentPage+1,'...',totalPages];
+  pages.forEach(p => {
+    if (p==='...') btns += `<span style="padding:4px 6px;font-family:var(--font-mono);font-size:11px;color:var(--text3)">…</span>`;
+    else btns += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goToPage(${p})">${p}</button>`;
+  });
+  btns += `<button class="page-btn" onclick="goToPage(${currentPage+1})"
+    ${currentPage===totalPages?'disabled style="opacity:.4;cursor:not-allowed"':''}>Next ›</button>`;
+  paginationEl.innerHTML = btns;
+}
+
+function goToPage(page) {
+  const data = getFiltered();
+  const totalPages = Math.ceil(data.length / PAGE_SIZE);
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  renderTable();
+  document.querySelector('.table-section')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function resetPage() { currentPage = 1; }
+
+function filterTable(q)         { searchQ = q.toLowerCase(); resetPage(); renderTable(); }
+function filterByStatus(s)      { statusQ = s; resetPage(); renderTable(); }
+function filterByPartnerDrop(p) { partnerDropQ = p; resetPage(); renderTable(); }
+
+function setPartner(p, el) {
+  activePartner = p;
+  document.querySelectorAll('.partner-pill').forEach(x => x.classList.remove('active'));
+  const allEl = document.getElementById('pill-all');
+  if (allEl) {
+    allEl.style.background = ''; allEl.style.color = 'var(--text2)'; allEl.style.fontWeight = '500';
+  }
+  if (p === 'all') {
+    if (allEl) { allEl.style.background='rgba(15,122,255,0.08)'; allEl.style.color='var(--accent)'; allEl.style.fontWeight='600'; }
+  } else if (el) {
+    el.classList.add('active');
+  }
+  resetPage(); renderTable();
+}
+
+function setChannel(btn, ch) {
+  document.querySelectorAll('.ch-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeChannel = ch;
+  resetPage(); renderTable();
+}
+
+// ── TAB + NAV ──────────────────────────────────────────
+function switchView(id, tabEl) {
+  try {
+    document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    const viewEl = document.getElementById('view-'+id);
+    if (!viewEl) { console.error('switchView: view-'+id+' not found in DOM'); return; }
+    viewEl.classList.add('active');
+    if (tabEl) tabEl.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navEl = document.querySelector('.nav-item[data-view="'+id+'"]');
+    if (navEl) navEl.classList.add('active');
+    if (navTitles && navTitles[id]) {
+      const titleEl = document.getElementById('page-title');
+      if (titleEl) titleEl.textContent = navTitles[id];
+    }
+  } catch(e) {
+    console.error('switchView error:', e);
+  }
+}
+
+const navMap    = { dashboard:0, lrboard:1, mis:2, timeline:3, consignees:4, appointments:5, serviceability:6, users:7 };
+const navTitles = { dashboard:'Mosaic Move', lrboard:'LR Tracking', mis:'MIS Manager', timeline:'Shipment Timeline', consignees:'Consignee Master', appointments:'Appointment Tracker', serviceability:'Serviceability Master', users:'User Management' };
+
+function setNav(el, id) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = navTitles[id];
+  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  const tabs = document.querySelectorAll('.view-tab');
+  if (tabs[navMap[id]]) tabs[navMap[id]].classList.add('active');
+}
+
+// ── MODAL ──────────────────────────────────────────────
+function openModal()  { document.getElementById('lr-modal').classList.add('open'); }
+function closeModal() { document.getElementById('lr-modal').classList.remove('open'); }
+
+async function submitLR() {
+  // Collect form values
+  const lr        = document.querySelector('#lr-modal input[type=text]')?.value?.trim();
+  const partnerEl = document.querySelector('#lr-modal select');
+  const partnerName = partnerEl?.value;
+  if (!lr || !partnerName) { showToast('⚠ LR Number and Partner are required'); return; }
+  const partner = partners.find(p => p.name === partnerName);
+  if (!partner) { showToast('⚠ Partner not found'); return; }
+
+  const { error } = await db.from('shipments').insert({
+    lr_number:       lr,
+    partner_id:      partner.id,
+    warehouse:       'Bhiwandi',
+    channel:         'Offline',
+    consignee:       'Manual Entry',
+    delivery_status: 'Pending',
+    created_by:      currentUserEmail || 'unknown'
+  });
+  if (error) { showToast('✗ Error saving LR: ' + error.message); return; }
+  closeModal();
+  showToast('LR entry saved ✓');
+  await loadShipments();
+  await loadStats();
+}
+
+// ── CSV EXPORT ─────────────────────────────────────────
+function exportCSV() {
+  const data = getFiltered();
+  const h = ['LR Number','Partner','Channel','Consignee','Warehouse','Dispatch','Appointment','Delivery','Status'];
+  const csv = [h, ...data.map(r=>[r.lr,r.partner,r.channel,r.consignee,r.wh,r.dispatch,r.appt,r.delivery,r.status])].map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'MosaicMove_LR_Export_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('CSV exported ✓');
+}
+
+// ══════════════════════════════════════════════════════
+// TWO-STAGE MIS UPLOAD ENGINE
+// ══════════════════════════════════════════════════════
+
+// Column mapping per partner — normalises varied header names to standard keys
+const COLUMN_MAPS = {
+  // Standard keys: lr, consignee, warehouse, channel, dispatch, appt, expected, status, delivery, remarks
+  Everest: { 'LR Number':'lr','Consignee Name':'consignee','Origin WH':'warehouse','Channel':'channel','Dispatch Date':'dispatch','Appointment Date':'appt','Delivery Status':'status','Delivery Date':'delivery','Remarks':'remarks' },
+  Buraq:   { 'LR No.':'lr','Consignee':'consignee','Warehouse':'warehouse','Channel Type':'channel','Dispatch Date':'dispatch','Appt. Date':'appt','Status':'status','Delivery Date':'delivery' },
+  Rivigo:  { 'Docket No.':'lr','Receiver Name':'consignee','Origin Hub':'warehouse','Business Type':'channel','Booking Date':'dispatch','EDD':'expected','Delivery Status':'status','Delivery Date':'delivery','Exception Reason':'remarks' },
+  Sitics:  { 'AWB / LR Number':'lr','Customer':'consignee','Dispatch Hub':'warehouse','Channel':'channel','Ship Date':'dispatch','Scheduled Delivery':'expected','Current Status':'status','Actual Delivery':'delivery','Attempt Count':'remarks' }
+};
+
+// Generic fallback fuzzy map for unknown partners
+const FUZZY_MAP = {
+  lr:        ['lr','lr number','lr no','docket','awb','consignment','shipment id'],
+  consignee: ['consignee','customer','receiver','client'],
+  warehouse: ['warehouse','hub','origin','wh'],
+  channel:   ['channel','type','business type'],
+  dispatch:  ['dispatch','booking','ship date','dispatch date'],
+  appt:      ['appointment','appt','slot'],
+  expected:  ['edd','expected','scheduled'],
+  status:    ['status','delivery status','current status'],
+  delivery:  ['delivery date','actual delivery','delivered on'],
+  remarks:   ['remarks','exception','reason','attempt']
+};
+
+function normaliseHeaders(rawHeaders, partnerName) {
+  const map = COLUMN_MAPS[partnerName] || {};
+  const result = {};
+  rawHeaders.forEach((h, idx) => {
+    const trimmed = (h || '').toString().trim();
+    if (map[trimmed]) {
+      result[map[trimmed]] = idx;
+    } else {
+      // Fuzzy fallback
+      const lower = trimmed.toLowerCase();
+      Object.entries(FUZZY_MAP).forEach(([key, variants]) => {
+        if (result[key] === undefined && variants.some(v => lower.includes(v))) {
+          result[key] = idx;
+        }
+      });
+    }
+  });
+  return result;
+}
+
+function parseDate(val) {
+  if (!val) return null;
+  if (typeof val === 'number') {
+    // Excel serial date
+    const d = new Date((val - 25569) * 86400 * 1000);
+    return d.toISOString().slice(0,10);
+  }
+  const d = new Date(val);
+  if (!isNaN(d)) return d.toISOString().slice(0,10);
+  return null;
+}
+
+// ── WAREHOUSE BASE FILE UPLOAD ─────────────────────────
+async function uploadWarehouseFile(file, partnerName, uploadedBy) {
+  const partner = partners.find(p => p.name === partnerName);
+  if (!partner) throw new Error('Partner not found: ' + partnerName);
+
+  // Read file with SheetJS
+  const data = await file.arrayBuffer();
+  const wb   = XLSX.read(data, { type:'array', cellDates:false });
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  if (rows.length < 2) throw new Error('File appears empty');
+
+  const headers  = rows[0].map(h => (h||'').toString().trim());
+  const colMap   = normaliseHeaders(headers, partnerName);
+  const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+  if (!colMap.lr) throw new Error('Could not find LR Number column. Check file format.');
+
+  // Create upload record
+  const { data: uploadRec, error: uploadErr } = await db.from('uploads').insert({
+    upload_type:  'warehouse_base',
+    partner_id:   partner.id,
+    filename:     file.name,
+    row_count:    dataRows.length,
+    uploaded_by:  uploadedBy,
+    status:       'processing'
+  }).select().single();
+  if (uploadErr) throw uploadErr;
+
+  // Batch insert shipments
+  const records = dataRows.map(row => ({
+    lr_number:         (row[colMap.lr]||'').toString().trim(),
+    partner_id:        partner.id,
+    warehouse:         colMap.warehouse !== undefined ? (row[colMap.warehouse]||'').toString().trim() : partner.warehouses?.[0] || 'Unknown',
+    channel:           colMap.channel   !== undefined ? (row[colMap.channel]||'').toString().trim()   : 'Offline',
+    consignee:         colMap.consignee !== undefined ? (row[colMap.consignee]||'').toString().trim() : 'Unknown',
+    dispatch_date:     parseDate(colMap.dispatch !== undefined ? row[colMap.dispatch] : null),
+    appt_date:         parseDate(colMap.appt     !== undefined ? row[colMap.appt]     : null),
+    expected_delivery: parseDate(colMap.expected !== undefined ? row[colMap.expected] : null),
+    delivery_status:   'Pending',
+    created_by:        uploadedBy,
+    warehouse_upload_id: uploadRec.id
+  })).filter(r => r.lr_number);
+
+  // Upsert — if LR exists, update; if new, insert
+  const { error: insertErr } = await db.from('shipments').upsert(records, { onConflict:'lr_number', ignoreDuplicates:false });
+  if (insertErr) {
+    await db.from('uploads').update({ status:'failed', error_log: insertErr.message }).eq('id', uploadRec.id);
+    throw insertErr;
+  }
+
+  await db.from('uploads').update({ status:'complete', row_count: records.length }).eq('id', uploadRec.id);
+  return { inserted: records.length, uploadId: uploadRec.id };
+}
+
+// ── PARTNER MIS UPLOAD ─────────────────────────────────
+async function uploadMISFile(file, partnerName, uploadedBy) {
+  const partner = partners.find(p => p.name === partnerName);
+  if (!partner) throw new Error('Partner not found: ' + partnerName);
+
+  const data = await file.arrayBuffer();
+  const wb   = XLSX.read(data, { type:'array', cellDates:false });
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+  if (rows.length < 2) throw new Error('File appears empty');
+
+  const headers  = rows[0].map(h => (h||'').toString().trim());
+  const colMap   = normaliseHeaders(headers, partnerName);
+  const dataRows = rows.slice(1).filter(r => r.some(c => c !== ''));
+
+  if (!colMap.lr) throw new Error('Could not find LR Number column. Check file format.');
+
+  // Create upload record
+  const { data: uploadRec, error: uploadErr } = await db.from('uploads').insert({
+    upload_type: 'partner_mis',
+    partner_id:  partner.id,
+    filename:    file.name,
+    row_count:   dataRows.length,
+    uploaded_by: uploadedBy,
+    status:      'processing'
+  }).select().single();
+  if (uploadErr) throw uploadErr;
+
+  let matched = 0, unmatched = 0;
+  const misRecords      = [];
+  const unmatchedRecords = [];
+
+  // Get all existing LR numbers for this partner for fast lookup
+  const { data: existingLRs } = await db
+    .from('shipments')
+    .select('lr_number')
+    .eq('partner_id', partner.id);
+  const lrSet = new Set((existingLRs||[]).map(r => r.lr_number));
+
+  for (const row of dataRows) {
+    const lr = (row[colMap.lr]||'').toString().trim();
+    if (!lr) continue;
+
+    if (lrSet.has(lr)) {
+      // MATCHED — create MIS update and update shipment status
+      const newStatus = (row[colMap.status]||'').toString().trim() || 'In Transit';
+      const mappedStatus = mapStatusToStandard(newStatus);
+
+      misRecords.push({
+        lr_number:       lr,
+        partner_id:      partner.id,
+        delivery_status: mappedStatus,
+        actual_delivery: parseDate(colMap.delivery !== undefined ? row[colMap.delivery] : null),
+        remarks:         colMap.remarks !== undefined ? (row[colMap.remarks]||'').toString().trim() : null,
+        mis_upload_id:   uploadRec.id,
+        match_status:    'matched',
+        updated_by:      uploadedBy
+      });
+      matched++;
+    } else {
+      // UNMATCHED — flag it
+      unmatchedRecords.push({
+        lr_number:    lr,
+        partner_id:   partner.id,
+        mis_upload_id: uploadRec.id,
+        raw_row:      JSON.stringify(row)
+      });
+      unmatched++;
+    }
+  }
+
+  // Insert MIS updates
+  if (misRecords.length > 0) {
+    const { error: misErr } = await db.from('mis_updates').insert(misRecords);
+    if (misErr) console.error('MIS insert error:', misErr);
+
+    // Update shipment statuses in bulk
+    for (const rec of misRecords) {
+      await db.from('shipments')
+        .update({ delivery_status: rec.delivery_status })
+        .eq('lr_number', rec.lr_number);
+    }
+  }
+
+  // Log unmatched LRs
+  if (unmatchedRecords.length > 0) {
+    await db.from('unmatched_lrs').insert(unmatchedRecords);
+  }
+
+  // Update upload record with results
+  await db.from('uploads').update({
+    status:          'complete',
+    matched_count:   matched,
+    unmatched_count: unmatched
+  }).eq('id', uploadRec.id);
+
+  return { matched, unmatched, total: dataRows.length, uploadId: uploadRec.id };
+}
+
+function mapStatusToStandard(raw) {
+  const r = raw.toLowerCase();
+  if (r.includes('deliver')) return 'Delivered';
+  if (r.includes('transit') || r.includes('progress') || r.includes('dispatch')) return 'In Transit';
+  if (r.includes('delay')) return 'Delayed';
+  if (r.includes('attempt') || r.includes('undeliver') || r.includes('failed attempt')) return 'Attempted/UD';
+  if (r.includes('rto') || r.includes('return') || r.includes('fail')) return 'Failed/RTO';
+  return 'In Transit';
+}
+
+// ── MIS TAB UPLOAD HANDLER ─────────────────────────────
+// Determines upload type from the UI toggle and calls the right function
+let mdmUploadType   = 'warehouse_base'; // 'warehouse_base' or 'partner_mis'
+let mdmSelectedPartner = '';
+let mdmSelectedFile    = null;
+
+function setUploadType(type, btn) {
+  mdmUploadType = type;
+  document.querySelectorAll('.upload-type-btn').forEach(b => {
+    b.style.background = 'var(--surface2)';
+    b.style.color      = 'var(--text2)';
+    b.style.borderColor = 'var(--border)';
+  });
+  btn.style.background  = 'var(--accent)';
+  btn.style.color       = '#fff';
+  btn.style.borderColor = 'var(--accent)';
+
+  // Update helper text
+  const helper = document.getElementById('upload-type-helper');
+  if (helper) {
+    helper.textContent = type === 'warehouse_base'
+      ? 'Creates new shipment records. LR numbers become the primary key.'
+      : 'Looks up LR numbers from base file and updates delivery status.';
+  }
+}
+
+async function mdmUpload() {
+  if (!mdmSelectedPartner || !mdmSelectedFile) return;
+  const btn = document.getElementById('mdm-upload-btn');
+  btn.textContent = 'Uploading…'; btn.style.background = 'var(--pending)'; btn.disabled = true;
+
+  try {
+    let result;
+    if (mdmUploadType === 'warehouse_base') {
+      setTimeout(() => { btn.textContent = 'Creating records…'; btn.style.background = 'var(--intransit)'; }, 800);
+      result = await uploadWarehouseFile(mdmSelectedFile, mdmSelectedPartner, currentUserEmail || 'unknown');
+      btn.textContent = '✓ Uploaded'; btn.style.background = 'var(--delivered)';
+      showToast(`✓ ${result.inserted} LR records created for ${mdmSelectedPartner}`);
+    } else {
+      setTimeout(() => { btn.textContent = 'Matching LRs…'; btn.style.background = 'var(--intransit)'; }, 800);
+      result = await uploadMISFile(mdmSelectedFile, mdmSelectedPartner, currentUserEmail || 'unknown');
+      btn.textContent = '✓ Uploaded'; btn.style.background = 'var(--delivered)';
+
+      if (result.unmatched > 0) {
+        showToast(`✓ ${result.matched} matched · ⚠ ${result.unmatched} LRs not found in base file`);
+      } else {
+        showToast(`✓ ${result.matched} / ${result.total} LRs updated for ${mdmSelectedPartner}`);
+      }
+    }
+
+    // Reload data
+    await Promise.all([loadShipments(), loadStats(), loadUploadHistory()]);
+    mdmPartnerChanged(mdmSelectedPartner); // refresh partner stats panel
+
+  } catch(e) {
+    btn.textContent = '✗ Failed'; btn.style.background = 'var(--failed)';
+    showToast('✗ Upload failed: ' + e.message);
+    console.error(e);
+  }
+
+  setTimeout(() => {
+    btn.textContent = 'Upload ↑'; btn.style.background = 'var(--accent)';
+    btn.disabled = false;
+    mdmSelectedFile = null;
+    document.getElementById('mdm-file-input').value = '';
+    resetDropZone(); updateMdmValidation();
+  }, 2500);
+}
+
+// ── UPLOAD HISTORY RENDER ──────────────────────────────
+const partnerColors = { Everest:'p-everest', Buraq:'p-buraq', Rivigo:'p-rivigo', Sitics:'p-sitics' };
+
+function renderUploadHistory() {
+  const tbody = document.getElementById('upload-history-body');
+  if (!tbody) return;
+  if (uploadHistory.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text3);font-family:var(--font-mono);font-size:12px">No uploads yet — upload a Warehouse Base File to get started</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = uploadHistory.map(r => {
+    const pName   = r.partners?.name || r.partner || '—';
+    const pClass  = partnerColors[pName] || 'partner-badge';
+    const typeTag = r.upload_type === 'warehouse_base'
+      ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(108,71,255,0.08);color:#6c47ff;padding:2px 7px;border-radius:4px">BASE FILE</span>`
+      : `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(16,185,129,0.08);color:#059669;padding:2px 7px;border-radius:4px">MIS</span>`;
+    const matchInfo = r.upload_type === 'partner_mis' && r.matched_count != null
+      ? `<br><span style="font-size:9px;color:var(--text3)">${r.matched_count} matched · ${r.unmatched_count||0} unmatched</span>` : '';
+    return `<tr>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle">
+        <span class="partner-badge ${pClass}">${pName}</span>
+      </td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border)">${typeTag}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.filename}">${r.filename}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;font-family:var(--font-mono);font-weight:600;color:var(--text)">${(r.row_count||0).toLocaleString()}${matchInfo}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--text2)">${r.uploaded_by||'—'}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--font-mono);color:var(--text3)">${fmtDate(r.uploaded_at)}</td>
+      <td style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <span class="status-pill ${r.status==='complete'?'s-delivered':'s-delayed'}">${r.status==='complete'?'Success':'Failed'}</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── SAVE NEW PARTNER TO DB ─────────────────────────────
+async function saveNewPartner() {
+  const name    = document.getElementById('np-name')?.value?.trim();
+  const code    = document.getElementById('np-code')?.value?.trim();
+  const channel = document.getElementById('np-channel')?.value;
+  if (!name)    { showToast('⚠ Partner name is required'); return; }
+  if (!code)    { showToast('⚠ Partner code is required'); return; }
+  if (activeLogisticsTypes.size === 0) { showToast('⚠ Select at least one logistics type'); return; }
+  if (!channel) { showToast('⚠ Select a channel'); return; }
+
+  const colors = ['#0ea5e9','#a855f7','#f43f5e','#14b8a6','#f97316','#84cc16'];
+  const color  = colors[partners.length % colors.length];
+  const warehouses = Array.from(document.getElementById('np-warehouse')?.selectedOptions||[]).map(o=>o.value);
+
+  const { error } = await db.from('partners').insert({
+    name, code: code.toUpperCase(), color,
+    logistics_type: [...activeLogisticsTypes],
+    channel,
+    warehouses: warehouses.length ? warehouses : ['Bhiwandi'],
+    contact_name:  document.getElementById('np-contact')?.value?.trim() || null,
+    contact_email: document.getElementById('np-email')?.value?.trim()   || null,
+    sla_terms:     document.getElementById('np-notes')?.value?.trim()   || null,
+    status:        'active',
+    created_by:    currentUserEmail || 'unknown'
+  });
+
+  if (error) { showToast('✗ Error saving partner: ' + error.message); return; }
+  closeAddPartnerModal();
+  showToast(`${name} added as a B2B partner ✓`);
+  await loadPartners();
+}
+
+// ── MDM PARTNER PANEL ──────────────────────────────────
+// (loads live stats from DB instead of hardcoded values)
+async function mdmPartnerChanged(val) {
+  mdmSelectedPartner = val;
+  mdmSelectedFile    = null;
+  document.getElementById('mdm-file-input').value = '';
+  resetDropZone(); updateMdmValidation();
+
+  const infoEl  = document.getElementById('mdm-partner-info');
+  const colEl   = document.getElementById('mdm-col-map');
+  const emptyEl = document.getElementById('mdm-empty-state');
+  if (!val) {
+    if(infoEl) infoEl.style.display='none';
+    if(colEl)  colEl.style.display='none';
+    if(emptyEl) emptyEl.style.display='block';
+    return;
+  }
+
+  const p = partners.find(x => x.name === val);
+  if (!p) return;
+
+  if(emptyEl) emptyEl.style.display='none';
+  if(infoEl)  infoEl.style.display='block';
+  if(colEl)   colEl.style.display='block';
+
+  document.getElementById('mdm-info-dot').style.background = p.color;
+  const nameEl = document.getElementById('mdm-info-name');
+  if (nameEl) { nameEl.textContent = val; nameEl.style.color = p.color; }
+
+  // Fetch live stats for this partner
+  const { data: stats } = await db
+    .from('shipment_status_view')
+    .select('delivery_status')
+    .eq('partner_name', val);
+
+  const total     = (stats||[]).length;
+  const delivered = (stats||[]).filter(r=>r.delivery_status==='Delivered').length;
+  const transit   = (stats||[]).filter(r=>r.delivery_status==='In Transit').length;
+  const delayed   = (stats||[]).filter(r=>r.delivery_status==='Delayed').length;
+
+  // Get last upload time
+  const { data: lastUp } = await db
+    .from('uploads')
+    .select('uploaded_at, status')
+    .eq('partner_id', p.id)
+    .order('uploaded_at', { ascending:false })
+    .limit(1);
+  const lastSync = lastUp?.[0] ? fmtDate(lastUp[0].uploaded_at) : 'Not yet uploaded';
+  const syncStatus = total > 0 ? 'live' : 'new';
+
+  const statusEl = document.getElementById('mdm-info-status');
+  if (statusEl) {
+    const labels = { live:'LIVE', new:'NEW', stale:'STALE' };
+    const colors = { live:'rgba(16,185,129,0.1)', new:'rgba(15,122,255,0.1)', stale:'rgba(255,107,53,0.1)' };
+    const txts   = { live:'#059669', new:'var(--accent)', stale:'#ff6b35' };
+    statusEl.textContent = labels[syncStatus]||'NEW';
+    statusEl.style.background = colors[syncStatus]||colors.new;
+    statusEl.style.color      = txts[syncStatus]||txts.new;
+  }
+
+  const metaEl = document.getElementById('mdm-info-meta');
+  if (metaEl) metaEl.innerHTML = `Route: ${p.logistics_type?.join(' + ')} · ${p.channel}<br>Last sync: ${lastSync}`;
+
+  const setS = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  setS('mdm-stat-total', total);
+  setS('mdm-stat-del',   delivered);
+  setS('mdm-stat-tr',    transit);
+  setS('mdm-stat-dl',    delayed);
+
+  // Column map
+  const colMap = COLUMN_MAPS[val];
+  const colList = document.getElementById('mdm-col-list');
+  if (colList && colMap) {
+    const partnerData = Object.values(COLUMN_MAPS)[Object.keys(COLUMN_MAPS).indexOf(val)];
+    const cols = partnerData
+      ? Object.entries(partnerData).map(([name, std]) => ({
+          name, req: ['lr','consignee','warehouse','dispatch','status'].includes(std)
+        }))
+      : [];
+    colList.innerHTML = cols.map(c => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:${c.req?'rgba(15,122,255,0.04)':'#fff'};border-radius:5px;border:1px solid var(--border)">
+        <span style="font-size:10px;font-family:var(--font-mono);color:${c.req?'var(--accent)':'var(--text3)'};width:14px">${c.req?'*':''}</span>
+        <span style="font-size:11px;font-family:var(--font-mono);color:${c.req?'var(--text)':'var(--text2)'}">${c.name}</span>
+        <span style="margin-left:auto;font-size:9px;font-family:var(--font-mono);color:${c.req?'var(--accent)':'var(--text3)'}">${c.req?'REQUIRED':'OPTIONAL'}</span>
+      </div>`).join('');
+  }
+
+  const selEl = document.getElementById('mdm-partner-select');
+  if (selEl) selEl.style.borderColor = p.color;
+}
+
+
+function mdmFileSelected(input) {
+  if (input.files && input.files[0]) {
+    mdmSelectedFile = input.files[0];
+    updateDropZone(mdmSelectedFile);
+    updateMdmValidation();
+  }
+}
+
+function mdmFileDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (file) {
+    mdmSelectedFile = file;
+    updateDropZone(file);
+    updateMdmValidation();
+  }
+  event.currentTarget.style.borderColor = 'var(--border)';
+  event.currentTarget.style.background = 'var(--surface2)';
+}
+
+function updateDropZone(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const ok = ['xlsx','xls','csv'].includes(ext);
+  const dz = document.getElementById('mdm-drop-zone');
+  document.getElementById('mdm-drop-icon').textContent = ok ? '✅' : '❌';
+  document.getElementById('mdm-drop-label').textContent = file.name;
+  document.getElementById('mdm-drop-sub').textContent =
+    ok ? `${(file.size/1024).toFixed(1)} KB · ${ext.toUpperCase()} · Ready to upload`
+       : 'Unsupported file type — use .xlsx, .xls or .csv';
+  dz.style.borderColor = ok ? 'var(--delivered)' : 'var(--failed)';
+  dz.style.background  = ok ? 'rgba(16,185,129,0.03)' : 'rgba(239,68,68,0.03)';
+}
+
+function resetDropZone() {
+  document.getElementById('mdm-drop-icon').textContent = '📂';
+  document.getElementById('mdm-drop-label').textContent = 'Click or drag MIS file here';
+  document.getElementById('mdm-drop-sub').textContent = '.xlsx · .xls · .csv — max 25 MB';
+  const dz = document.getElementById('mdm-drop-zone');
+  dz.style.borderColor = 'var(--border)';
+  dz.style.background  = 'var(--surface2)';
+}
+
+function updateMdmValidation() {
+  const btn = document.getElementById('mdm-upload-btn');
+  const msg = document.getElementById('mdm-validation-msg');
+  const hasPartner = !!mdmSelectedPartner;
+  const hasFile = !!mdmSelectedFile;
+  const fileOk = hasFile && ['xlsx','xls','csv'].includes(mdmSelectedFile.name.split('.').pop().toLowerCase());
+
+  if (!hasPartner && !hasFile) {
+    msg.textContent = 'Select a partner and file to continue';
+    msg.style.color = 'var(--text3)';
+  } else if (!hasPartner) {
+    msg.textContent = '⚠ Please select a partner first';
+    msg.style.color = 'var(--delayed)';
+  } else if (!hasFile) {
+    msg.textContent = `✓ ${mdmSelectedPartner} selected — now choose a file`;
+    msg.style.color = 'var(--intransit)';
+  } else if (!fileOk) {
+    msg.textContent = '✗ Invalid file type — use .xlsx, .xls or .csv';
+    msg.style.color = 'var(--failed)';
+  } else {
+    msg.textContent = `✓ Ready — ${mdmSelectedPartner} · ${mdmSelectedFile.name}`;
+    msg.style.color = 'var(--delivered)';
+  }
+
+  const ready = hasPartner && fileOk;
+  btn.disabled = !ready;
+  btn.style.background = ready ? 'var(--accent)' : '#e2e6ed';
+  btn.style.color = ready ? '#fff' : 'var(--text3)';
+  btn.style.cursor = ready ? 'pointer' : 'not-allowed';
+}
+
+
+// ── ADD NEW PARTNER MODAL ──
+const activeLogisticsTypes = new Set();
+
+function openAddPartnerModal() {
+  // Reset form
+  ['np-name','np-code','np-contact','np-email','np-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('np-channel').value = '';
+  document.getElementById('np-mis-format').value = '';
+  activeLogisticsTypes.clear();
+  ['b2b','ftl','ptl','ecom'].forEach(t => {
+    const check = document.getElementById('ltype-'+t+'-check');
+    const label = document.getElementById('ltype-'+t);
+    if (check) check.textContent = '☐';
+    if (label) { label.style.borderColor = 'var(--border)'; label.style.color = 'var(--text2)'; label.style.background = ''; }
+  });
+  document.getElementById('add-partner-modal').classList.add('open');
+}
+
+function closeAddPartnerModal() {
+  document.getElementById('add-partner-modal').classList.remove('open');
+}
+
+function toggleLogisticsType(type) {
+  const check = document.getElementById('ltype-'+type+'-check');
+  const label = document.getElementById('ltype-'+type);
+  if (activeLogisticsTypes.has(type)) {
+    activeLogisticsTypes.delete(type);
+    check.textContent = '☐';
+    label.style.borderColor = 'var(--border)';
+    label.style.color = 'var(--text2)';
+    label.style.background = '';
+  } else {
+    activeLogisticsTypes.add(type);
+    check.textContent = '☑';
+    label.style.borderColor = 'var(--accent)';
+    label.style.color = 'var(--accent)';
+    label.style.background = 'rgba(15,122,255,0.05)';
+  }
+}
+
+
+// uploadHistory and partnerColors declared above — removed stale duplicates
+
+
+function addUploadHistory(partner, filename) {
+  const now = new Date();
+  const timeStr = `${now.getDate()} ${now.toLocaleString('en',{month:'short'})} · ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  uploadHistory.unshift({
+    partner, file: filename,
+    period: 'Mar 2026',
+    rows: Math.floor(Math.random() * 200) + 80,
+    by: 'You',
+    time: timeStr,
+    ok: true
+  });
+  if (uploadHistory.length > 10) uploadHistory.pop();
+  renderUploadHistory();
+}
+
+// Auth functions moved to <head> script block
+
+
+// ══════════════════════════════════════════════════════
+// CONSIGNEE MASTER — Data Layer & UI
+// ══════════════════════════════════════════════════════
+let consignees      = [];          // full list from DB
+let filteredConsignees = [];       // after filters applied
+
+// Retailer type badge colours
+const TYPE_STYLES = {
+  'Modern Trade':     { bg:'rgba(16,185,129,0.08)',  color:'#059669' },
+  'Ecom Marketplace': { bg:'rgba(15,122,255,0.08)',  color:'#0f7aff' },
+  'Quick Commerce':   { bg:'rgba(139,92,246,0.08)',  color:'#7c3aed' },
+  'General Trade':    { bg:'rgba(245,158,11,0.08)',  color:'#d97706' },
+  'Wholesale':        { bg:'rgba(255,107,53,0.08)',  color:'#ff6b35' },
+  'Pharmacy':         { bg:'rgba(20,184,166,0.08)',  color:'#0d9488' },
+  'Other':            { bg:'rgba(156,163,175,0.08)', color:'#6b7280' },
+};
+
+// ── LOAD consignees from Supabase ──────────────────────
+async function loadConsignees() {
+  const { data, error } = await db
+    .from('consignee_performance_view')
+    .select('*')
+    .order('name');
+  if (error) { console.warn('Consignee load error:', error); return; }
+  consignees = data || [];
+  filteredConsignees = [...consignees];
+  renderConsigneeTable();
+  updateConsigneeKPIs();
+}
+
+// ── KPI CARDS ──────────────────────────────────────────
+function updateConsigneeKPIs() {
+  const total     = consignees.length;
+  const mt        = consignees.filter(c => c.retailer_type === 'Modern Trade').length;
+  const ecom      = consignees.filter(c => ['Ecom Marketplace','Quick Commerce'].includes(c.retailer_type)).length;
+  const wholesale = consignees.filter(c => c.retailer_type === 'Wholesale').length;
+  const appt      = consignees.filter(c => c.appointment_required).length;
+
+  const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  set('ckpi-total',    total);
+  set('ckpi-mt',       mt);
+  set('ckpi-ecom',     ecom);
+  set('ckpi-wholesale',wholesale);
+  set('ckpi-appt',     appt);
+}
+
+// ── FILTER ─────────────────────────────────────────────
+function filterConsignees() {
+  const q       = (document.getElementById('consignee-search')?.value || '').toLowerCase();
+  const type    = document.getElementById('consignee-type-filter')?.value || '';
+  const channel = document.getElementById('consignee-channel-filter')?.value || '';
+  const region  = document.getElementById('consignee-region-filter')?.value || '';
+
+  filteredConsignees = consignees.filter(c => {
+    const mq = !q || (c.name||'').toLowerCase().includes(q)
+                  || (c.city||'').toLowerCase().includes(q)
+                  || (c.short_code||'').toLowerCase().includes(q);
+    const mt = !type    || c.retailer_type === type;
+    const mc = !channel || c.channel === channel;
+    const mr = !region  || c.region === region;
+    return mq && mt && mc && mr;
+  });
+
+  renderConsigneeTable();
+  const lbl = document.getElementById('consignee-count-label');
+  if (lbl) lbl.textContent = `${filteredConsignees.length} of ${consignees.length} consignees`;
+}
+
+// ── RENDER TABLE ───────────────────────────────────────
+function renderConsigneeTable() {
+  const tbody = document.getElementById('consignee-tbody');
+  if (!tbody) return;
+
+  if (filteredConsignees.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${consignees.length === 0
+        ? '⬆ No consignees yet — click "+ Add Consignee" to build your retailer master'
+        : '🔍 No consignees match the current filters'}
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filteredConsignees.map(c => {
+    const ts  = TYPE_STYLES[c.retailer_type] || TYPE_STYLES['Other'];
+    const dr  = c.delivery_rate_pct != null ? `${c.delivery_rate_pct}%` : '—';
+    const drColor = c.delivery_rate_pct >= 80 ? 'var(--delivered)'
+                  : c.delivery_rate_pct >= 60 ? 'var(--pending)'
+                  : c.delivery_rate_pct != null ? 'var(--failed)' : 'var(--text3)';
+    const apptBadge = c.appointment_required
+      ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(245,158,11,0.1);color:var(--pending);padding:2px 7px;border-radius:4px">YES</span>`
+      : `<span style="font-size:9px;font-family:var(--font-mono);background:var(--surface2);color:var(--text3);padding:2px 7px;border-radius:4px">NO</span>`;
+    const statusBadge = c.is_active !== false
+      ? `<span class="status-pill s-delivered">Active</span>`
+      : `<span class="status-pill s-delayed">Inactive</span>`;
+
+    return `<tr>
+      <td style="font-weight:600;color:var(--text)">${c.name}</td>
+      <td><span style="font-family:var(--font-mono);font-size:10px;background:var(--surface2);padding:2px 7px;border-radius:4px;color:var(--text2)">${c.short_code || '—'}</span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:5px;background:${ts.bg};color:${ts.color};font-weight:600">${c.retailer_type}</span></td>
+      <td><span class="channel-tag">${c.channel}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${c.city || '—'}</td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);color:var(--text3)">${c.region || '—'}</span></td>
+      <td>${apptBadge}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:center">${c.delivery_lead_days || '—'}d</td>
+      <td style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text);text-align:center">${(c.total_shipments || 0).toLocaleString()}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${drColor};text-align:center">${dr}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--delayed);text-align:center">${c.delayed || 0}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <button class="action-btn" onclick="editConsignee('${c.id}')">Edit</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const lbl = document.getElementById('consignee-count-label');
+  if (lbl) lbl.textContent = `${filteredConsignees.length} of ${consignees.length} consignees`;
+}
+
+// ── ADD CONSIGNEE MODAL ────────────────────────────────
+function openAddConsigneeModal() {
+  ['cn-name','cn-code','cn-city','cn-state','cn-pincode',
+   'cn-appt-window','cn-contact-name','cn-contact-phone','cn-instructions']
+    .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  ['cn-type','cn-channel','cn-region'].forEach(id => {
+    const e = document.getElementById(id); if(e) e.value = '';
+  });
+  const ld = document.getElementById('cn-lead'); if(ld) ld.value = '2';
+  const ar = document.getElementById('cn-appt-req'); if(ar) ar.value = 'false';
+  document.getElementById('consignee-modal')?.classList.add('open');
+}
+
+function closeAddConsigneeModal() {
+  document.getElementById('consignee-modal')?.classList.remove('open');
+}
+
+async function saveConsignee() {
+  const name    = document.getElementById('cn-name')?.value?.trim();
+  const type    = document.getElementById('cn-type')?.value;
+  const channel = document.getElementById('cn-channel')?.value;
+
+  if (!name)    { showToast('⚠ Consignee name is required'); return; }
+  if (!type)    { showToast('⚠ Please select retailer type'); return; }
+  if (!channel) { showToast('⚠ Please select channel'); return; }
+
+  const payload = {
+    name,
+    short_code:           document.getElementById('cn-code')?.value?.trim()?.toUpperCase() || null,
+    retailer_type:        type,
+    channel,
+    city:                 document.getElementById('cn-city')?.value?.trim()     || null,
+    state:                document.getElementById('cn-state')?.value?.trim()    || null,
+    region:               document.getElementById('cn-region')?.value           || null,
+    pincode:              document.getElementById('cn-pincode')?.value?.trim()  || null,
+    appointment_required: document.getElementById('cn-appt-req')?.value === 'true',
+    appointment_window:   document.getElementById('cn-appt-window')?.value?.trim() || null,
+    delivery_lead_days:   parseInt(document.getElementById('cn-lead')?.value) || 2,
+    contact_name:         document.getElementById('cn-contact-name')?.value?.trim()  || null,
+    contact_phone:        document.getElementById('cn-contact-phone')?.value?.trim() || null,
+    special_instructions: document.getElementById('cn-instructions')?.value?.trim()  || null,
+    created_by:           currentUserEmail || 'unknown',
+    is_active:            true,
+  };
+
+  const { error } = await db.from('consignees').insert(payload);
+  if (error) {
+    if (error.code === '23505') {
+      showToast('⚠ A consignee with this name already exists');
+    } else {
+      showToast('✗ Error saving: ' + error.message);
+    }
+    return;
+  }
+
+  closeAddConsigneeModal();
+  showToast(`✓ ${name} added to Consignee Master`);
+  await loadConsignees();
+}
+
+async function editConsignee(id) {
+  // For now show a toast — full edit modal is v2
+  showToast('Edit functionality coming in next update');
+}
+
+// ── AUTO-MATCH consignee name when uploading shipments ─
+// Called from uploadWarehouseFile after inserting shipments
+async function matchConsigneesToShipments() {
+  // Get all unlinked shipments (consignee_id is null)
+  const { data: unlinked } = await db
+    .from('shipments')
+    .select('lr_number, consignee')
+    .is('consignee_id', null);
+
+  if (!unlinked || unlinked.length === 0) return;
+
+  // Get consignee master
+  const { data: masterList } = await db
+    .from('consignees')
+    .select('id, name');
+
+  if (!masterList || masterList.length === 0) return;
+
+  // Match by name similarity (case-insensitive, partial)
+  for (const shipment of unlinked) {
+    const rawName = (shipment.consignee || '').toLowerCase().trim();
+    const match = masterList.find(c =>
+      rawName.includes(c.name.toLowerCase()) ||
+      c.name.toLowerCase().includes(rawName)
+    );
+    if (match) {
+      await db.from('shipments')
+        .update({ consignee_id: match.id })
+        .eq('lr_number', shipment.lr_number);
+    }
+  }
+}
+
+// ── HOOK into loadAllData ──────────────────────────────
+const _origLoadAllData = loadAllData;
+
+// ══════════════════════════════════════════════════════
+// APPOINTMENT TRACKER — Data Layer & UI
+// ══════════════════════════════════════════════════════
+
+let apptShipments = [];       // all shipments with appt_date
+let apptWeekStart = null;     // current week start date for dashboard strip
+
+// ── LOAD appointments from Supabase ───────────────────
+async function loadAppointments() {
+  const { data, error } = await db
+    .from('shipment_status_view')
+    .select('lr_number,partner_name,partner_color,consignee,channel,warehouse,dispatch_date,appt_date,delivery_status,actual_delivery')
+    .not('appt_date', 'is', null)
+    .order('appt_date', { ascending: true });
+  if (error) { console.warn('Appt load error:', error); return; }
+  apptShipments = data || [];
+  renderApptDashboardStrip();
+  renderApptView();
+  updateApptKPIs();
+  populateApptPartnerFilter();
+}
+
+// ── DATE HELPERS ───────────────────────────────────────
+function toDateStr(d) {
+  if (!d) return null;
+  return new Date(d).toISOString().slice(0, 10);
+}
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function daysBetween(a, b) {
+  // a and b are YYYY-MM-DD strings
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+function fmtShort(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+}
+function dayLabel(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { weekday:'short' });
+}
+
+// ── APPT STATUS LOGIC ─────────────────────────────────
+function apptStatus(row) {
+  const today  = todayStr();
+  const appt   = toDateStr(row.appt_date);
+  const status = row.delivery_status;
+  if (!appt) return null;
+  if (status === 'Delivered') return { label:'Delivered', cls:'s-delivered', color:'var(--delivered)' };
+  if (appt === today)         return { label:'Today',     cls:'s-transit',   color:'var(--intransit)' };
+  if (appt > today)           return { label:'Upcoming',  cls:'s-pending',   color:'var(--pending)'   };
+  // appt is in the past and not delivered
+  return { label:'Missed', cls:'s-failed', color:'var(--failed)' };
+}
+
+function daysToApptLabel(appt) {
+  const today = todayStr();
+  const diff  = daysBetween(today, appt);
+  if (diff === 0)  return { text:'Today',          color:'var(--intransit)', bold:true };
+  if (diff === 1)  return { text:'Tomorrow',        color:'var(--pending)',   bold:true };
+  if (diff > 1)    return { text:`In ${diff}d`,     color:'var(--text2)',     bold:false };
+  if (diff === -1) return { text:'Yesterday',       color:'var(--delayed)',   bold:true };
+  return { text:`${Math.abs(diff)}d overdue`, color:'var(--failed)', bold:true };
+}
+
+// ── KPI CARDS ──────────────────────────────────────────
+function updateApptKPIs() {
+  const today    = todayStr();
+  const in7      = addDays(today, 7);
+  const total    = apptShipments.length;
+  const todayAp  = apptShipments.filter(r => toDateStr(r.appt_date) === today).length;
+  const upcoming = apptShipments.filter(r => {
+    const a = toDateStr(r.appt_date);
+    return a > today && a <= in7 && r.delivery_status !== 'Delivered';
+  }).length;
+  const missed   = apptShipments.filter(r => {
+    const a = toDateStr(r.appt_date);
+    return a < today && r.delivery_status !== 'Delivered';
+  }).length;
+
+  const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  set('akpi-total',    total);
+  set('akpi-today',    todayAp);
+  set('akpi-upcoming', upcoming);
+  set('akpi-missed',   missed);
+}
+
+// ── CARRIER BREAKDOWN CARDS ────────────────────────────
+function renderApptCarrierBreakdown() {
+  const el = document.getElementById('appt-carrier-breakdown');
+  if (!el) return;
+  const today = todayStr();
+
+  // Group by partner
+  const byPartner = {};
+  apptShipments.forEach(r => {
+    const p = r.partner_name || 'Unknown';
+    if (!byPartner[p]) byPartner[p] = { color: r.partner_color || '#6c47ff', total:0, today:0, upcoming:0, missed:0, delivered:0 };
+    byPartner[p].total++;
+    const a = toDateStr(r.appt_date);
+    const s = r.delivery_status;
+    if (s === 'Delivered')  byPartner[p].delivered++;
+    else if (a === today)   byPartner[p].today++;
+    else if (a > today)     byPartner[p].upcoming++;
+    else                    byPartner[p].missed++;
+  });
+
+  el.innerHTML = Object.entries(byPartner).map(([name, d]) => `
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.04)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${d.color}"></div>
+        <div style="font-family:var(--font-head);font-weight:700;font-size:14px;color:${d.color}">${name}</div>
+        <div style="margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--text3)">${d.total} appts</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="text-align:center;background:rgba(15,122,255,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--intransit)">${d.today}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">TODAY</div>
+        </div>
+        <div style="text-align:center;background:rgba(245,158,11,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--pending)">${d.upcoming}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">UPCOMING</div>
+        </div>
+        <div style="text-align:center;background:rgba(239,68,68,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--failed)">${d.missed}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">MISSED</div>
+        </div>
+        <div style="text-align:center;background:rgba(16,185,129,0.05);border-radius:7px;padding:8px 4px">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--delivered)">${d.delivered}</div>
+          <div style="font-size:9px;font-family:var(--font-mono);color:var(--text3)">DONE</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── POPULATE PARTNER FILTER IN APPT VIEW ──────────────
+function populateApptPartnerFilter() {
+  const sel = document.getElementById('appt-partner-filter');
+  if (!sel) return;
+  const existing = new Set([...sel.options].map(o => o.value));
+  const names = [...new Set(apptShipments.map(r => r.partner_name).filter(Boolean))].sort();
+  names.forEach(n => {
+    if (!existing.has(n)) {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      sel.appendChild(opt);
+    }
+  });
+}
+
+// ── MAIN APPT TABLE RENDER ────────────────────────────
+function renderApptView() {
+  renderApptCarrierBreakdown();
+  const tbody = document.getElementById('appt-tbody');
+  const info  = document.getElementById('appt-table-info');
+  if (!tbody) return;
+
+  const partnerF = document.getElementById('appt-partner-filter')?.value || '';
+  const statusF  = document.getElementById('appt-status-filter')?.value  || '';
+  const searchQ  = (document.getElementById('appt-search')?.value || '').toLowerCase();
+  const today    = todayStr();
+  const in7      = addDays(today, 7);
+
+  let filtered = apptShipments.filter(r => {
+    const appt = toDateStr(r.appt_date);
+    const as   = apptStatus(r);
+
+    const mp = !partnerF || r.partner_name === partnerF;
+    const mq = !searchQ  || (r.lr_number||'').toLowerCase().includes(searchQ)
+                          || (r.consignee||'').toLowerCase().includes(searchQ);
+    let ms = true;
+    if (statusF === 'today')     ms = appt === today && r.delivery_status !== 'Delivered';
+    if (statusF === 'upcoming')  ms = appt > today && appt <= in7 && r.delivery_status !== 'Delivered';
+    if (statusF === 'missed')    ms = appt < today && r.delivery_status !== 'Delivered';
+    if (statusF === 'delivered') ms = r.delivery_status === 'Delivered';
+    return mp && mq && ms;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${apptShipments.length === 0
+        ? '⬆ No appointment dates found — upload a warehouse base file with appointment dates'
+        : '🔍 No LRs match the current filters'}
+    </td></tr>`;
+    if (info) info.textContent = '0 results';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const appt     = toDateStr(r.appt_date);
+    const as_      = apptStatus(r);
+    const dtl      = daysToApptLabel(appt);
+    const pColor   = r.partner_color || '#6c47ff';
+    const isToday  = appt === today;
+    const isMissed = appt < today && r.delivery_status !== 'Delivered';
+
+    return `<tr style="${isToday ? 'background:rgba(15,122,255,0.03)' : isMissed ? 'background:rgba(239,68,68,0.02)' : ''}">
+      <td><span class="lr-code">${r.lr_number}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);font-weight:600;padding:3px 8px;border-radius:5px;background:${pColor}15;color:${pColor}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${pColor};display:inline-block"></span>${r.partner_name || '—'}
+      </span></td>
+      <td style="font-weight:500;color:var(--text)">${r.consignee || '—'}</td>
+      <td><span class="channel-tag">${r.channel || '—'}</span></td>
+      <td><span class="channel-tag">${r.warehouse || '—'}</span></td>
+      <td><span class="date-cell">${fmtDate(r.dispatch_date)}</span></td>
+      <td>
+        <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${isToday ? 'var(--intransit)' : isMissed ? 'var(--failed)' : 'var(--text)'}">
+          ${fmtShort(appt)}
+        </span>
+      </td>
+      <td>
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:${dtl.bold?'700':'400'};color:${dtl.color}">
+          ${dtl.text}
+        </span>
+      </td>
+      <td><span class="status-pill ${statusClass(r.delivery_status)}">${r.delivery_status}</span></td>
+      <td><span class="status-pill ${as_?.cls || 's-pending'}">${as_?.label || '—'}</span></td>
+    </tr>`;
+  }).join('');
+
+  if (info) info.textContent = `${filtered.length} appointment${filtered.length !== 1 ? 's' : ''}`;
+}
+
+// ── EXPORT APPT CSV ────────────────────────────────────
+function exportApptCSV() {
+  const rows = apptShipments.map(r => [
+    r.lr_number, r.partner_name, r.consignee, r.channel,
+    r.warehouse, r.dispatch_date, r.appt_date, r.delivery_status
+  ]);
+  const h = ['LR Number','Carrier','Consignee','Channel','Warehouse','Dispatch Date','Appointment Date','Status'];
+  const csv = [h, ...rows].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'MosaicMove_Appointments.csv';
+  a.click();
+  showToast('Appointments exported ✓');
+}
+
+// ══════════════════════════════════════════════════════
+// DASHBOARD APPOINTMENT STRIP — 7-day week view
+// ══════════════════════════════════════════════════════
+
+let apptSelectedDay = null;
+
+function apptGoToday() {
+  apptWeekStart = getWeekStart(todayStr());
+  apptSelectedDay = todayStr();
+  renderApptDashboardStrip();
+}
+
+function apptChangePeriod(days) {
+  if (!apptWeekStart) apptWeekStart = getWeekStart(todayStr());
+  apptWeekStart = addDays(apptWeekStart, days);
+  renderApptDashboardStrip();
+}
+
+function getWeekStart(dateStr) {
+  // Start week on Monday
+  const d = new Date(dateStr);
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function renderApptDashboardStrip() {
+  if (!apptWeekStart) apptWeekStart = getWeekStart(todayStr());
+  if (!apptSelectedDay) apptSelectedDay = todayStr();
+
+  const today   = todayStr();
+  const weekEnd = addDays(apptWeekStart, 6);
+
+  // Update period label
+  const lbl = document.getElementById('appt-period-label');
+  if (lbl) lbl.textContent = `${fmtShort(apptWeekStart)} — ${fmtShort(weekEnd)}`;
+
+  // Build 7 day columns
+  const grid = document.getElementById('appt-week-grid');
+  if (!grid) return;
+
+  const days = Array.from({length:7}, (_, i) => addDays(apptWeekStart, i));
+
+  grid.innerHTML = days.map(day => {
+    const dayAppts = apptShipments.filter(r => toDateStr(r.appt_date) === day);
+    const missed   = dayAppts.filter(r => day < today && r.delivery_status !== 'Delivered').length;
+    const done     = dayAppts.filter(r => r.delivery_status === 'Delivered').length;
+    const pending  = dayAppts.length - missed - done;
+    const isToday  = day === today;
+    const isSelected = day === apptSelectedDay;
+
+    // Count by carrier for mini dots
+    const carriers = {};
+    dayAppts.forEach(r => {
+      if (r.partner_name) {
+        carriers[r.partner_name] = carriers[r.partner_name] || { color: r.partner_color||'#6c47ff', count:0 };
+        carriers[r.partner_name].count++;
+      }
+    });
+
+    return `
+      <div onclick="selectApptDay('${day}')"
+        style="padding:12px 10px;border-right:1px solid var(--border);cursor:pointer;transition:background .15s;
+               background:${isSelected ? 'rgba(15,122,255,0.06)' : isToday ? 'rgba(15,122,255,0.02)' : '#fff'};
+               border-bottom:${isSelected ? '3px solid var(--accent)' : '3px solid transparent'}"
+        onmouseover="this.style.background='rgba(15,122,255,0.04)'"
+        onmouseout="this.style.background='${isSelected ? 'rgba(15,122,255,0.06)' : isToday ? 'rgba(15,122,255,0.02)' : '#fff'}'">
+        <div style="font-size:9px;font-family:var(--font-mono);color:${isToday?'var(--accent)':'var(--text3)'};letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">${dayLabel(day)}</div>
+        <div style="font-family:var(--font-head);font-weight:700;font-size:16px;color:${isToday?'var(--accent)':'var(--text)'};margin-bottom:8px">${new Date(day).getDate()}</div>
+        ${dayAppts.length === 0
+          ? `<div style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">No appts</div>`
+          : `
+            <div style="font-size:18px;font-family:var(--font-head);font-weight:800;color:${missed>0?'var(--failed)':done===dayAppts.length?'var(--delivered)':'var(--text)'};margin-bottom:4px">${dayAppts.length}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">
+              ${done    > 0 ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(16,185,129,0.1);color:var(--delivered);padding:1px 5px;border-radius:3px">${done}✓</span>` : ''}
+              ${pending > 0 ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(245,158,11,0.1);color:var(--pending);padding:1px 5px;border-radius:3px">${pending}⏳</span>` : ''}
+              ${missed  > 0 ? `<span style="font-size:9px;font-family:var(--font-mono);background:rgba(239,68,68,0.1);color:var(--failed);padding:1px 5px;border-radius:3px">${missed}!</span>` : ''}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              ${Object.entries(carriers).map(([n,d]) =>
+                `<span title="${n}: ${d.count}" style="width:8px;height:8px;border-radius:50%;background:${d.color};display:inline-block"></span>`
+              ).join('')}
+            </div>`
+        }
+      </div>`;
+  }).join('');
+
+  // Render the selected day detail
+  renderApptDayDetail(apptSelectedDay);
+}
+
+function selectApptDay(day) {
+  apptSelectedDay = day;
+  renderApptDashboardStrip();
+}
+
+function renderApptDayDetail(day) {
+  const el = document.getElementById('appt-day-detail');
+  if (!el) return;
+
+  const today  = todayStr();
+  const dayLRs = apptShipments.filter(r => toDateStr(r.appt_date) === day);
+
+  if (dayLRs.length === 0) {
+    el.innerHTML = `<div style="padding:20px 20px;font-size:12px;font-family:var(--font-mono);color:var(--text3);text-align:center">No appointments scheduled for ${fmtShort(day)}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="padding:12px 20px 0;font-size:11px;font-family:var(--font-mono);font-weight:600;color:var(--text);border-top:1px solid var(--border)">
+      ${dayLRs.length} appointment${dayLRs.length>1?'s':''} on ${fmtShort(day)}${day===today?' — TODAY':''}
+    </div>
+    <table class="data-table" style="margin-top:0">
+      <thead><tr>
+        <th>LR NUMBER</th><th>CARRIER</th><th>CONSIGNEE</th>
+        <th>CHANNEL</th><th>WAREHOUSE</th><th>DISPATCH</th>
+        <th>DELIVERY STATUS</th><th>APPT STATUS</th>
+      </tr></thead>
+      <tbody>
+        ${dayLRs.map(r => {
+          const as_ = apptStatus(r);
+          const pColor = r.partner_color || '#6c47ff';
+          const isMissed = day < today && r.delivery_status !== 'Delivered';
+          return `<tr style="${day===today?'background:rgba(15,122,255,0.025)':isMissed?'background:rgba(239,68,68,0.02)':''}">
+            <td><span class="lr-code">${r.lr_number}</span></td>
+            <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);font-weight:600;padding:3px 8px;border-radius:5px;background:${pColor}15;color:${pColor}">
+              <span style="width:6px;height:6px;border-radius:50%;background:${pColor};display:inline-block"></span>${r.partner_name||'—'}
+            </span></td>
+            <td style="font-weight:500;color:var(--text)">${r.consignee||'—'}</td>
+            <td><span class="channel-tag">${r.channel||'—'}</span></td>
+            <td><span class="channel-tag">${r.warehouse||'—'}</span></td>
+            <td><span class="date-cell">${fmtDate(r.dispatch_date)}</span></td>
+            <td><span class="status-pill ${statusClass(r.delivery_status)}">${r.delivery_status}</span></td>
+            <td><span class="status-pill ${as_?.cls||'s-pending'}" style="font-weight:700">${as_?.label||'—'}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// Hook loadAppointments into loadAllData
+
+// ══════════════════════════════════════════════════════
+// BRAND FILTER
+// ══════════════════════════════════════════════════════
+let activeBrand = 'all';
+
+function setBrand(btn, brand) {
+  document.querySelectorAll('#brand-toggle .ch-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeBrand = brand;
+  resetPage();
+  renderTable();
+  // Update KPIs if on dashboard
+  if (activeBrand !== 'all' && db) {
+    db.rpc('get_brand_stats', { p_brand: brand === 'all' ? null : brand })
+      .then(({ data }) => { if (data) { dbStats = data; updateKpiCards(); updateTrioCards(); } });
+  } else if (db) {
+    loadStats();
+  }
+}
+
+// Brand filter is merged directly into getFiltered() below — no override needed
+
+// ══════════════════════════════════════════════════════
+// SERVICEABILITY MASTER
+// ══════════════════════════════════════════════════════
+let svcLanes    = [];
+let svcFiltered = [];
+
+async function loadServiceability() {
+  const { data, error } = await db
+    .from('serviceability')
+    .select('*, partners(name,color)')
+    .eq('is_active', true)
+    .order('origin_warehouse')
+    .order('committed_days');
+  if (error) { console.warn('Serviceability load error:', error); return; }
+  svcLanes    = data || [];
+  svcFiltered = [...svcLanes];
+  renderServiceabilityTable();
+  updateSvcKPIs();
+  populateSvcPartnerFilter();
+}
+
+function updateSvcKPIs() {
+  const total      = svcLanes.length;
+  const avgSLA     = total > 0
+    ? (svcLanes.reduce((s, r) => s + (r.committed_days || 0), 0) / total).toFixed(1)
+    : '—';
+  const carriers   = new Set(svcLanes.map(r => r.partner_name || r.partners?.name)).size;
+  const warehouses = new Set(svcLanes.map(r => r.origin_warehouse)).size;
+
+  const set = (id, v) => { const e = document.getElementById(id); if(e) e.textContent = v; };
+  set('skpi-total',      total);
+  set('skpi-avg',        avgSLA + 'd');
+  set('skpi-carriers',   carriers);
+  set('skpi-warehouses', warehouses);
+}
+
+function populateSvcPartnerFilter() {
+  const sel = document.getElementById('svc-partner-filter');
+  if (!sel) return;
+  const names = [...new Set(svcLanes.map(r => r.partner_name || r.partners?.name).filter(Boolean))].sort();
+  names.forEach(n => {
+    if (![...sel.options].find(o => o.value === n)) {
+      const opt = document.createElement('option'); opt.value = n; opt.textContent = n;
+      sel.appendChild(opt);
+    }
+  });
+}
+
+function filterServiceability() {
+  const wh     = document.getElementById('svc-warehouse-filter')?.value || '';
+  const pf     = document.getElementById('svc-partner-filter')?.value   || '';
+  const rf     = document.getElementById('svc-region-filter')?.value    || '';
+  const q      = (document.getElementById('svc-search')?.value || '').toLowerCase();
+
+  svcFiltered = svcLanes.filter(r => {
+    const pName = r.partner_name || r.partners?.name || '';
+    const mw = !wh || r.origin_warehouse === wh;
+    const mp = !pf || pName === pf;
+    const mr = !rf || r.dest_region === rf;
+    const mq = !q  || (r.origin_pincode||'').includes(q)
+                    || (r.dest_city||'').toLowerCase().includes(q)
+                    || (r.dest_pincode||'').includes(q)
+                    || (r.origin_city||'').toLowerCase().includes(q);
+    return mw && mp && mr && mq;
+  });
+  renderServiceabilityTable();
+}
+
+const PRIORITY_STYLE = {
+  P0: { bg:'rgba(239,68,68,0.1)',   color:'var(--failed)',    label:'P0 — Critical' },
+  P1: { bg:'rgba(15,122,255,0.1)',  color:'var(--accent)',    label:'P1 — Standard' },
+  P2: { bg:'rgba(245,158,11,0.1)', color:'var(--pending)',   label:'P2 — Normal'   },
+  P3: { bg:'rgba(156,163,175,0.1)',color:'var(--text3)',     label:'P3 — Low'      },
+};
+
+const SVC_TYPE_STYLE = {
+  FTL:      { bg:'rgba(108,71,255,0.08)',  color:'#6c47ff' },
+  PTL:      { bg:'rgba(255,107,53,0.08)',  color:'#ff6b35' },
+  Express:  { bg:'rgba(239,68,68,0.08)',   color:'var(--failed)' },
+  Standard: { bg:'rgba(16,185,129,0.08)',  color:'var(--delivered)' },
+};
+
+function renderServiceabilityTable() {
+  const tbody = document.getElementById('svc-tbody');
+  const info  = document.getElementById('svc-table-info');
+  if (!tbody) return;
+
+  if (svcFiltered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">
+      ${svcLanes.length === 0 ? '⬆ Run the v2 SQL schema to load serviceability lanes' : '🔍 No lanes match filters'}
+    </td></tr>`;
+    if (info) info.textContent = '0 lanes';
+    return;
+  }
+
+  tbody.innerHTML = svcFiltered.map(r => {
+    const pName  = r.partner_name || r.partners?.name || '—';
+    const pColor = r.partners?.color || '#6c47ff';
+    const ps     = PRIORITY_STYLE[r.priority]  || PRIORITY_STYLE.P1;
+    const ts     = SVC_TYPE_STYLE[r.service_type] || SVC_TYPE_STYLE.Standard;
+    const slaColor = r.committed_days <= 2 ? 'var(--delivered)'
+                   : r.committed_days <= 4 ? 'var(--pending)' : 'var(--delayed)';
+
+    return `<tr>
+      <td><span style="font-family:var(--font-mono);font-size:11px;font-weight:700;background:rgba(15,122,255,0.07);color:var(--accent);padding:3px 8px;border-radius:5px">${r.origin_warehouse||'—'}</span></td>
+      <td><span class="date-cell">${r.origin_pincode}</span></td>
+      <td style="font-weight:600;color:var(--text)">${r.dest_city||'—'}</td>
+      <td><span class="date-cell">${r.dest_pincode||'—'}</span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);color:var(--text3)">${r.dest_region||'—'}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);font-weight:600;padding:3px 8px;border-radius:5px;background:${pColor}15;color:${pColor}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${pColor};display:inline-block"></span>${pName}
+      </span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:5px;font-weight:600;background:${ts.bg};color:${ts.color}">${r.service_type}</span></td>
+      <td><span class="channel-tag">${r.channel||'—'}</span></td>
+      <td style="text-align:center"><span style="font-family:var(--font-head);font-weight:800;font-size:16px;color:${slaColor}">${r.committed_days}d</span></td>
+      <td style="text-align:center"><span style="font-family:var(--font-mono);font-size:12px;color:var(--text2)">${r.standard_days||'—'}d</span></td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:5px;background:${ps.bg};color:${ps.color};font-weight:600">${r.priority}</span></td>
+    </tr>`;
+  }).join('');
+
+  if (info) info.textContent = `${svcFiltered.length} lane${svcFiltered.length !== 1 ? 's' : ''}`;
+}
+
+function exportSvcCSV() {
+  const h = ['Origin WH','Origin Pincode','Dest City','Dest Pincode','Region','Carrier','Service Type','Channel','Committed Days','Standard Days','Priority'];
+  const rows = svcFiltered.map(r => [
+    r.origin_warehouse, r.origin_pincode, r.dest_city, r.dest_pincode, r.dest_region,
+    r.partner_name || r.partners?.name, r.service_type, r.channel,
+    r.committed_days, r.standard_days, r.priority
+  ]);
+  const csv = [h, ...rows].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'MosaicMove_Serviceability.csv'; a.click();
+  showToast('Serviceability matrix exported ✓');
+}
+
+// ══════════════════════════════════════════════════════
+// USER MANAGEMENT
+// ══════════════════════════════════════════════════════
+let usersList = [];
+let currentUserRole = 'viewer'; // updated after login
+
+const ROLE_STYLE = {
+  admin:      { bg:'rgba(239,68,68,0.1)',  color:'var(--failed)',    label:'Admin'      },
+  ops_upload: { bg:'rgba(15,122,255,0.1)', color:'var(--accent)',    label:'Ops Upload' },
+  viewer:     { bg:'rgba(16,185,129,0.1)', color:'var(--delivered)', label:'Viewer'     },
+};
+
+async function loadUsers() {
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .order('role')
+    .order('name');
+  if (error) { console.warn('Users load error:', error); return; }
+  usersList = data || [];
+
+  // Set current user role
+  const me = usersList.find(u => u.email === currentUserEmail);
+  if (me) {
+    currentUserRole = me.role;
+    // Show/hide invite button based on role
+    const invBtn = document.getElementById('invite-user-btn');
+    if (invBtn) invBtn.style.display = me.role === 'admin' ? 'block' : 'none';
+  }
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('users-tbody');
+  if (!tbody) return;
+
+  if (usersList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px">No users found — run v2 SQL schema to seed users</td></tr>`;
+    return;
+  }
+
+  const isAdmin = currentUserRole === 'admin';
+  tbody.innerHTML = usersList.map(u => {
+    const rs    = ROLE_STYLE[u.role] || ROLE_STYLE.viewer;
+    const isMe  = u.email === currentUserEmail;
+    const brands = (u.brands || []).join(', ') || 'All';
+    const lastLogin = u.last_login ? fmtDate(u.last_login) : 'Never';
+
+    return `<tr style="${isMe ? 'background:rgba(15,122,255,0.03)' : ''}">
+      <td style="font-weight:${isMe?'700':'500'};color:var(--text)">${u.name}${isMe?' <span style="font-size:9px;font-family:var(--font-mono);background:rgba(15,122,255,0.1);color:var(--accent);padding:2px 6px;border-radius:4px;margin-left:4px">YOU</span>':''}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text2)">${u.email}</td>
+      <td><span style="font-size:10px;font-family:var(--font-mono);padding:3px 9px;border-radius:5px;font-weight:700;background:${rs.bg};color:${rs.color}">${rs.label}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${u.department || '—'}</td>
+      <td style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">${brands}</td>
+      <td style="font-size:11px;color:var(--text3)">${u.reporting_to || '—'}</td>
+      <td><span class="status-pill ${u.is_active ? 's-delivered' : 's-delayed'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--text3)">${lastLogin}</td>
+      <td>
+        ${isAdmin && !isMe
+          ? `<button class="action-btn" onclick="toggleUserActive('${u.id}','${u.email}',${u.is_active})">${u.is_active ? 'Deactivate' : 'Activate'}</button>`
+          : '—'
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleUserActive(id, email, currentActive) {
+  if (currentUserRole !== 'admin') { showToast('⚠ Admin access required'); return; }
+  const { error } = await db.from('users').update({ is_active: !currentActive }).eq('id', id);
+  if (error) { showToast('✗ Error: ' + error.message); return; }
+  showToast(`${email} ${!currentActive ? 'activated' : 'deactivated'} ✓`);
+  await loadUsers();
+}
+
+// Invite user modal
+const invBrands = new Set();
+
+function openInviteUserModal() {
+  if (currentUserRole !== 'admin') { showToast('⚠ Only admins can invite users'); return; }
+  ['inv-name','inv-email','inv-dept'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  const r = document.getElementById('inv-role'); if(r) r.value = '';
+  invBrands.clear();
+  ['MM','BB','LJ','RL','OWN'].forEach(b => {
+    const chk = document.getElementById('inv-bchk-'+b);
+    const lbl = document.getElementById('inv-brand-'+b);
+    if(chk) chk.textContent = '☐';
+    if(lbl) { lbl.style.borderColor = 'var(--border)'; lbl.style.color = 'var(--text2)'; lbl.style.background = ''; }
+  });
+  document.getElementById('invite-user-modal')?.classList.add('open');
+}
+
+function closeInviteUserModal() {
+  document.getElementById('invite-user-modal')?.classList.remove('open');
+}
+
+function toggleInvBrand(brand, el) {
+  const chk = document.getElementById('inv-bchk-'+brand);
+  if (invBrands.has(brand)) {
+    invBrands.delete(brand);
+    if(chk) chk.textContent = '☐';
+    el.style.borderColor = 'var(--border)'; el.style.color = 'var(--text2)'; el.style.background = '';
+  } else {
+    invBrands.add(brand);
+    if(chk) chk.textContent = '☑';
+    el.style.borderColor = 'var(--accent)'; el.style.color = 'var(--accent)'; el.style.background = 'rgba(15,122,255,0.05)';
+  }
+}
+
+async function saveInviteUser() {
+  if (currentUserRole !== 'admin') { showToast('⚠ Admin access required'); return; }
+  const name  = document.getElementById('inv-name')?.value?.trim();
+  const email = document.getElementById('inv-email')?.value?.trim().toLowerCase();
+  const role  = document.getElementById('inv-role')?.value;
+  const dept  = document.getElementById('inv-dept')?.value?.trim();
+
+  if (!name)  { showToast('⚠ Name is required'); return; }
+  if (!email) { showToast('⚠ Email is required'); return; }
+  if (!email.endsWith('@mosaicwellness.in')) { showToast('⚠ Must be @mosaicwellness.in account'); return; }
+  if (!role)  { showToast('⚠ Please select a role'); return; }
+
+  const brands = invBrands.size > 0 ? [...invBrands] : ['MM','BB','LJ','RL','OWN','All'];
+
+  const { error } = await db.from('users').insert({
+    name, email, role,
+    brands,
+    warehouses: ['Bhiwandi','Baddi','Hyderabad'],
+    department: dept || null,
+    reporting_to: currentUserEmail,
+    invited_by:   currentUserEmail,
+    is_active: true,
+  });
+
+  if (error) {
+    if (error.code === '23505') showToast('⚠ This email already has access');
+    else showToast('✗ Error: ' + error.message);
+    return;
+  }
+  closeInviteUserModal();
+  showToast(`✓ ${name} invited as ${role} — active on next login`);
+  await loadUsers();
+}
+
+// ── Hook all new loaders into loadAllData ──────────────
+// Replace the current loadAllData with the complete version
+async function loadAllData() {
+  showDbStatus('loading');
+  try {
+    await Promise.all([
+      loadPartners(),
+      loadShipments(),
+      loadUploadHistory(),
+      loadStats(),
+      loadConsignees(),
+      loadAppointments(),
+      loadServiceability(),
+      loadUsers(),
+    ]);
+    showDbStatus('live');
+  } catch(e) {
+    console.error('DB load error:', e);
+    showDbStatus('error');
+  }
+}
+
+// Update onAuthSuccess to record last login
+const _origOnAuthSuccess = onAuthSuccess;
+function onAuthSuccess(user) {
+  currentUserEmail = user.email;
+  let attempts = 0;
+  const waitForSupabase = setInterval(() => {
+    attempts++;
+    if (initSupabase()) {
+      clearInterval(waitForSupabase);
+      // Update last login timestamp
+      db.from('users').update({ last_login: new Date().toISOString() }).eq('email', user.email).then(() => {});
+      loadAllData();
+      subscribeRealtime();
+    } else if (attempts > 20) {
+      clearInterval(waitForSupabase);
+      showToast('⚠ Database connection failed');
+    }
+  }, 100);
+}
+
+// Toast
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+</script>
+
+<div id="version-badge" style="
+  position:fixed; bottom:10px; right:10px; z-index:99999;
+  background:#1a56b0; color:#fff;
+  font-family:monospace; font-size:10px;
+  padding:4px 8px; border-radius:4px;
+  pointer-events:none; opacity:0.8;
+">v2-LIVE</div>
+
+</body>
+</html>
